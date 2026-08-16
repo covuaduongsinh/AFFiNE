@@ -2,6 +2,7 @@ import { AIStoreExtension } from '@affine/core/blocksuite/store-extensions/ai';
 import type { FeatureFlagService } from '@affine/core/modules/feature-flag';
 import { StoreExtensionManager } from '@blocksuite/affine/ext-loader';
 import { getInternalStoreExtensions } from '@blocksuite/affine/extensions/store';
+import { ChessBoardStoreExtension } from '@blocksuite/chess-block-board/store';
 
 import { FeatureFlagStoreExtension } from '../store-extensions/feature-flag';
 
@@ -29,6 +30,7 @@ class StoreProvider {
       ...getInternalStoreExtensions(),
       AIStoreExtension,
       FeatureFlagStoreExtension,
+      ChessBoardStoreExtension,
     ]);
   }
 

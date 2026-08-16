@@ -1,5 +1,6 @@
 import type { ReactToLit } from '@affine/component';
 import { AIViewExtension } from '@affine/core/blocksuite/view-extensions/ai';
+import { ChessViewExtension } from '@affine/core/blocksuite/view-extensions/chess';
 import { CloudViewExtension } from '@affine/core/blocksuite/view-extensions/cloud';
 import { CodeBlockPreviewViewExtension } from '@affine/core/blocksuite/view-extensions/code-block-preview';
 import { CommentViewExtension } from '@affine/core/blocksuite/view-extensions/comment';
@@ -37,6 +38,7 @@ import { FoundationViewExtension } from '@blocksuite/affine/foundation/view';
 import { InlineCommentViewExtension } from '@blocksuite/affine/inlines/comment';
 import { AffineCanvasTextFonts } from '@blocksuite/affine/shared/services';
 import { LinkedDocViewExtension } from '@blocksuite/affine/widgets/linked-doc/view';
+import { ChessBoardViewExtension } from '@blocksuite/chess-block-board/view';
 import type { FrameworkProvider } from '@toeverything/infra';
 import type { TemplateResult } from 'lit';
 
@@ -54,6 +56,7 @@ type Configure = {
   cloud: (framework?: FrameworkProvider, enableCloud?: boolean) => Configure;
   turboRenderer: (enableTurboRenderer?: boolean) => Configure;
   pdf: (enablePDFEmbedPreview?: boolean, reactToLit?: ReactToLit) => Configure;
+  chess: (enableChess?: boolean, reactToLit?: ReactToLit) => Configure;
   mobile: (framework?: FrameworkProvider) => Configure;
   ai: (enable?: boolean, framework?: FrameworkProvider) => Configure;
   electron: (framework?: FrameworkProvider) => Configure;
@@ -100,6 +103,8 @@ class ViewProvider {
       AffineLinkPreviewExtension,
       AffineDatabaseViewExtension,
       CommentViewExtension,
+      ChessBoardViewExtension,
+      ChessViewExtension,
     ]);
   }
 
@@ -121,6 +126,7 @@ class ViewProvider {
       cloud: this._configureCloud,
       turboRenderer: this._configureTurboRenderer,
       pdf: this._configurePdf,
+      chess: this._configureChess,
       mobile: this._configureMobile,
       ai: this._configureAI,
       electron: this._configureElectron,
@@ -145,6 +151,7 @@ class ViewProvider {
       .cloud()
       .turboRenderer()
       .pdf()
+      .chess()
       .mobile()
       .ai()
       .electron()
@@ -306,6 +313,14 @@ class ViewProvider {
       enablePDFEmbedPreview,
       reactToLit,
     });
+    return this.config;
+  };
+
+  private readonly _configureChess = (
+    enableChess?: boolean,
+    reactToLit?: ReactToLit
+  ) => {
+    this._manager.configure(ChessViewExtension, { enableChess, reactToLit });
     return this.config;
   };
 

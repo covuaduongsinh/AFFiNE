@@ -105,6 +105,9 @@ const usePatchSpecs = (mode: DocMode, shared?: boolean) => {
       .cloud(framework, isCloud)
       .turboRenderer(enableTurboRenderer)
       .pdf(enablePDFEmbedPreview, reactToLit)
+      // Chess blocks are core to this product, not an experiment, so there is
+      // no flag gating them — the boolean stays for a future kill switch.
+      .chess(true, reactToLit)
       .edgelessBlockHeader({
         framework,
         isInPeekView,

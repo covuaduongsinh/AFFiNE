@@ -391,6 +391,8 @@ __metadata:
     "@blocksuite/affine-components": "workspace:*"
     "@blocksuite/affine-ext-loader": "workspace:*"
     "@blocksuite/affine-shared": "workspace:*"
+    "@blocksuite/chess-block-board": "workspace:*"
+    "@blocksuite/chess-core": "workspace:*"
     "@blocksuite/data-view": "workspace:*"
     "@blocksuite/global": "workspace:*"
     "@blocksuite/icons": "npm:^2.2.17"
@@ -3310,6 +3312,31 @@ __metadata:
   dependencies:
     typedoc: "npm:^0.28.18"
     typedoc-plugin-markdown: "npm:^4.5.0"
+  languageName: unknown
+  linkType: soft
+
+"@blocksuite/chess-block-board@workspace:*, @blocksuite/chess-block-board@workspace:blocksuite/chess/block-board":
+  version: 0.0.0-use.local
+  resolution: "@blocksuite/chess-block-board@workspace:blocksuite/chess/block-board"
+  dependencies:
+    "@blocksuite/affine-components": "workspace:*"
+    "@blocksuite/affine-ext-loader": "workspace:*"
+    "@blocksuite/affine-shared": "workspace:*"
+    "@blocksuite/affine-widget-slash-menu": "workspace:*"
+    "@blocksuite/chess-core": "workspace:*"
+    "@blocksuite/global": "workspace:*"
+    "@blocksuite/icons": "npm:^2.2.17"
+    "@blocksuite/std": "workspace:*"
+    "@blocksuite/store": "workspace:*"
+    lit: "npm:^3.2.0"
+  languageName: unknown
+  linkType: soft
+
+"@blocksuite/chess-core@workspace:*, @blocksuite/chess-core@workspace:blocksuite/chess/core":
+  version: 0.0.0-use.local
+  resolution: "@blocksuite/chess-core@workspace:blocksuite/chess/core"
+  dependencies:
+    vitest: "npm:^4.1.8"
   languageName: unknown
   linkType: soft
 
