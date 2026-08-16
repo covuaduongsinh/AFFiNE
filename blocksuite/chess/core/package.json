@@ -9,7 +9,6 @@
   "keywords": [],
   "author": "toeverything",
   "license": "MIT",
-  "dependencies": {},
   "devDependencies": {
     "vitest": "^4.1.8"
   },

@@ -18,6 +18,8 @@
     { "path": "../../common/reader" },
     { "path": "../track" },
     { "path": "../../../blocksuite/affine/all" },
+    { "path": "../../../blocksuite/chess/block-board" },
+    { "path": "../../../blocksuite/chess/core" },
     { "path": "../../../blocksuite/affine/blocks/root" },
     { "path": "../../../blocksuite/affine/components" },
     { "path": "../../../blocksuite/affine/shared" },
