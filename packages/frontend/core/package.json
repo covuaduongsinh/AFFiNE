@@ -25,6 +25,7 @@
     "@blocksuite/affine-components": "workspace:*",
     "@blocksuite/affine-shared": "workspace:*",
     "@blocksuite/chess-block-board": "workspace:*",
+    "@blocksuite/chess-block-game": "workspace:*",
     "@blocksuite/chess-core": "workspace:*",
     "@blocksuite/data-view": "workspace:*",
     "@blocksuite/global": "workspace:*",

@@ -392,6 +392,7 @@ __metadata:
     "@blocksuite/affine-ext-loader": "workspace:*"
     "@blocksuite/affine-shared": "workspace:*"
     "@blocksuite/chess-block-board": "workspace:*"
+    "@blocksuite/chess-block-game": "workspace:*"
     "@blocksuite/chess-core": "workspace:*"
     "@blocksuite/data-view": "workspace:*"
     "@blocksuite/global": "workspace:*"
@@ -3329,6 +3330,25 @@ __metadata:
     "@blocksuite/std": "workspace:*"
     "@blocksuite/store": "workspace:*"
     lit: "npm:^3.2.0"
+    vitest: "npm:^4.1.8"
+  languageName: unknown
+  linkType: soft
+
+"@blocksuite/chess-block-game@workspace:*, @blocksuite/chess-block-game@workspace:blocksuite/chess/block-game":
+  version: 0.0.0-use.local
+  resolution: "@blocksuite/chess-block-game@workspace:blocksuite/chess/block-game"
+  dependencies:
+    "@blocksuite/affine-components": "workspace:*"
+    "@blocksuite/affine-ext-loader": "workspace:*"
+    "@blocksuite/affine-shared": "workspace:*"
+    "@blocksuite/affine-widget-slash-menu": "workspace:*"
+    "@blocksuite/chess-core": "workspace:*"
+    "@blocksuite/global": "workspace:*"
+    "@blocksuite/icons": "npm:^2.2.17"
+    "@blocksuite/std": "workspace:*"
+    "@blocksuite/store": "workspace:*"
+    lit: "npm:^3.2.0"
+    vitest: "npm:^4.1.8"
   languageName: unknown
   linkType: soft
 
