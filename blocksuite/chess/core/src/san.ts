@@ -1,12 +1,12 @@
-import { clonePosition } from './fen';
-import { isKingAttacked, legalMoves, makeMove } from './position';
+import { clonePosition } from './fen.js';
+import { isKingAttacked, legalMoves, makeMove } from './position.js';
 import {
   algebraicToSquare,
   fileOf,
   rankOf,
   squareToAlgebraic,
   typeToSanChar,
-} from './square';
+} from './square.js';
 import {
   EMPTY,
   FLAG_CAPTURE,
@@ -19,7 +19,7 @@ import {
   type PieceType,
   type Position,
   typeOf,
-} from './types';
+} from './types.js';
 
 const FILE_CHARS = 'abcdefgh';
 

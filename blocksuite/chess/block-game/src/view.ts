@@ -6,8 +6,8 @@ import { SlashMenuConfigExtension } from '@blocksuite/affine-widget-slash-menu';
 import { BlockViewExtension, FlavourExtension } from '@blocksuite/std';
 import { literal } from 'lit/static-html.js';
 
-import { chessGameSlashMenuConfig } from './configs/slash-menu';
-import { effects } from './effects';
+import { chessGameSlashMenuConfig } from './configs/slash-menu.js';
+import { effects } from './effects.js';
 
 export class ChessGameViewExtension extends ViewExtensionProvider {
   override name = 'affine-chess-game-block';

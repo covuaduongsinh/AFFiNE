@@ -2,8 +2,8 @@ import { CaptionedBlockComponent } from '@blocksuite/affine-components/caption';
 import { BlockSelection } from '@blocksuite/std';
 import { css, html } from 'lit';
 
-import type { ChessGameBlockModel } from './model';
-import { ChessGameRendererIdentifier } from './renderer';
+import type { ChessGameBlockModel } from './model.js';
+import { ChessGameRendererIdentifier } from './renderer.js';
 
 export class ChessGameBlockComponent extends CaptionedBlockComponent<ChessGameBlockModel> {
   static override styles = css`

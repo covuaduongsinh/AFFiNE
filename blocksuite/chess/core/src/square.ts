@@ -12,7 +12,7 @@ import {
   type Square,
   typeOf,
   WHITE,
-} from './types';
+} from './types.js';
 
 /** True when a 0x88 index refers to a real square. */
 export const onBoard = (sq: Square): boolean => (sq & 0x88) === 0;

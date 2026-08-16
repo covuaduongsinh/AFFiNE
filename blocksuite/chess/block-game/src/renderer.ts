@@ -2,7 +2,7 @@ import { createIdentifier } from '@blocksuite/global/di';
 import type { ExtensionType } from '@blocksuite/store';
 import type { TemplateResult } from 'lit';
 
-import type { ChessGameBlockModel } from './model';
+import type { ChessGameBlockModel } from './model.js';
 
 /**
  * Same seam as the board block: BlockSuite is Lit, the game viewer is React, so

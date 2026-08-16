@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { chessBoardMarkdownAdapterMatcher } from '../adapters/markdown';
-import { ChessBoardBlockSchema, START_FEN } from '../model';
+import { chessBoardMarkdownAdapterMatcher } from '../adapters/markdown.js';
+import { ChessBoardBlockSchema, START_FEN } from '../model.js';
 
 /**
  * The adapter's `toMatch` / `fromMatch` predicates decide whether a board

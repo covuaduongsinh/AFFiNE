@@ -7,7 +7,7 @@ import { parsePgn } from '@blocksuite/chess-core';
 import { nanoid } from '@blocksuite/store';
 import type { Code } from 'mdast';
 
-import { ChessGameBlockSchema, EMPTY_PGN } from '../model';
+import { ChessGameBlockSchema, EMPTY_PGN } from '../model.js';
 
 /**
  * Games travel through Markdown as a fenced block tagged `pgn`. PGN is already

@@ -2,7 +2,7 @@ import { createIdentifier } from '@blocksuite/global/di';
 import type { ExtensionType } from '@blocksuite/store';
 import type { TemplateResult } from 'lit';
 
-import type { ChessBoardBlockModel } from './model';
+import type { ChessBoardBlockModel } from './model.js';
 
 /**
  * The block draws nothing itself.

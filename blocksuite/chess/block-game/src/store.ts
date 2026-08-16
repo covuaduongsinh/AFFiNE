@@ -3,8 +3,8 @@ import {
   StoreExtensionProvider,
 } from '@blocksuite/affine-ext-loader';
 
-import { chessGameMarkdownAdapterExtension } from './adapters/markdown';
-import { ChessGameBlockSchemaExtension } from './model';
+import { chessGameMarkdownAdapterExtension } from './adapters/markdown.js';
+import { ChessGameBlockSchemaExtension } from './model.js';
 
 export class ChessGameStoreExtension extends StoreExtensionProvider {
   override name = 'affine-chess-game-block';

@@ -1,8 +1,8 @@
-import { toFen } from './fen';
-import { childrenAt, nodeAt, positionAt, walk } from './move-tree';
-import { applyMove } from './position';
-import { moveToSan } from './san';
-import type { Game, Move, MoveNode, MovePath } from './types';
+import { toFen } from './fen.js';
+import { childrenAt, nodeAt, positionAt, walk } from './move-tree.js';
+import { applyMove } from './position.js';
+import { moveToSan } from './san.js';
+import type { Game, Move, MoveNode, MovePath } from './types.js';
 
 /**
  * Editing operations on the move tree.

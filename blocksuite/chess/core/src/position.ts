@@ -1,5 +1,5 @@
-import { clonePosition } from './fen';
-import { fileOf, onBoard, rankOf, squareOf } from './square';
+import { clonePosition } from './fen.js';
+import { fileOf, onBoard, rankOf, squareOf } from './square.js';
 import {
   BISHOP,
   BLACK,
@@ -31,7 +31,7 @@ import {
   type Square,
   typeOf,
   WHITE,
-} from './types';
+} from './types.js';
 
 /** 0x88 direction offsets. Rank steps are ±16, file steps ±1. */
 const KNIGHT_OFFSETS = [33, 31, 18, 14, -14, -18, -31, -33];

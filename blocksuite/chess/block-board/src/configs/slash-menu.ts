@@ -4,7 +4,7 @@ import { START_FEN } from '@blocksuite/chess-core';
 import { TableIcon } from '@blocksuite/icons/lit';
 import type { BlockModel } from '@blocksuite/store';
 
-import type { BoardOrientation } from '../model';
+import type { BoardOrientation } from '../model.js';
 
 interface InsertOptions {
   fen?: string;

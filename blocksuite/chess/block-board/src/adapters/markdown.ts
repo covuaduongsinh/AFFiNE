@@ -7,7 +7,7 @@ import { parseFen } from '@blocksuite/chess-core';
 import { nanoid } from '@blocksuite/store';
 import type { Code } from 'mdast';
 
-import { ChessBoardBlockSchema, START_FEN } from '../model';
+import { ChessBoardBlockSchema, START_FEN } from '../model.js';
 
 /**
  * Boards travel through Markdown as a fenced block tagged `fen`:
