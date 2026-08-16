@@ -7,10 +7,15 @@ import {
   type ChessBoardBlockModel,
   ChessBoardRendererExtension,
 } from '@blocksuite/chess-block-board';
+import {
+  type ChessGameBlockModel,
+  ChessGameRendererExtension,
+} from '@blocksuite/chess-block-game';
 import { html, type TemplateResult } from 'lit';
 import { z } from 'zod';
 
 import { ChessBoardView } from './chess-board-view';
+import { ChessGameView } from './chess-game-view';
 
 const optionsSchema = z.object({
   enableChess: z.boolean().optional(),
@@ -42,13 +47,20 @@ export class ChessViewExtension extends ViewExtensionProvider<ChessViewOptions> 
     const reactToLit = options?.reactToLit;
     if (options?.enableChess === false || !reactToLit) return;
 
+    // `false` on both: the views subscribe to the model's signals themselves,
+    // so they re-render on their own and do not need the portal rebuilt on
+    // every Lit update.
     context.register(
       ChessBoardRendererExtension({
-        // `false`: the view subscribes to the model's signals itself, so it
-        // re-renders on its own and does not need the portal rebuilt on every
-        // Lit update.
         render: (model: ChessBoardBlockModel) =>
           html`${reactToLit(<ChessBoardView model={model} />, false)}`,
+      })
+    );
+
+    context.register(
+      ChessGameRendererExtension({
+        render: (model: ChessGameBlockModel) =>
+          html`${reactToLit(<ChessGameView model={model} />, false)}`,
       })
     );
   }

@@ -8,6 +8,14 @@
  */
 
 export {
+  deleteFrom,
+  playMove,
+  type PlayMoveResult,
+  promoteVariation,
+  setComment,
+  setNags,
+} from './edit-tree';
+export {
   clonePosition,
   FenError,
   findPieces,

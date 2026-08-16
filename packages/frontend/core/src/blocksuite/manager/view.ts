@@ -39,6 +39,7 @@ import { InlineCommentViewExtension } from '@blocksuite/affine/inlines/comment';
 import { AffineCanvasTextFonts } from '@blocksuite/affine/shared/services';
 import { LinkedDocViewExtension } from '@blocksuite/affine/widgets/linked-doc/view';
 import { ChessBoardViewExtension } from '@blocksuite/chess-block-board/view';
+import { ChessGameViewExtension } from '@blocksuite/chess-block-game/view';
 import type { FrameworkProvider } from '@toeverything/infra';
 import type { TemplateResult } from 'lit';
 
@@ -104,6 +105,7 @@ class ViewProvider {
       AffineDatabaseViewExtension,
       CommentViewExtension,
       ChessBoardViewExtension,
+      ChessGameViewExtension,
       ChessViewExtension,
     ]);
   }
