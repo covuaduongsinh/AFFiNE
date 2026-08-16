@@ -115,6 +115,7 @@
     { "path": "./blocksuite/affine/widgets/slash-menu" },
     { "path": "./blocksuite/affine/widgets/toolbar" },
     { "path": "./blocksuite/affine/widgets/viewport-overlay" },
+    { "path": "./blocksuite/chess/core" },
     { "path": "./blocksuite/docs" },
     { "path": "./blocksuite/docs-site" },
     { "path": "./blocksuite/framework/global" },

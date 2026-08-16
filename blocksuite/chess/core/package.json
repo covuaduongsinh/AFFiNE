@@ -1,0 +1,26 @@
+{
+  "name": "@blocksuite/chess-core",
+  "description": "Dependency-free chess rules, FEN and PGN engine for the chess workspace.",
+  "type": "module",
+  "scripts": {
+    "build": "yarn run -T tsc"
+  },
+  "sideEffects": false,
+  "keywords": [],
+  "author": "toeverything",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "vitest": "^4.1.8"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src",
+    "dist",
+    "!src/__tests__",
+    "!dist/__tests__"
+  ],
+  "version": "0.27.0"
+}
