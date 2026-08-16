@@ -6,7 +6,7 @@ import {
   rankOf,
   squareOf,
   squareToAlgebraic,
-} from './square';
+} from './square.js';
 import {
   BLACK,
   CASTLE_BK,
@@ -25,7 +25,7 @@ import {
   type Square,
   typeOf,
   WHITE,
-} from './types';
+} from './types.js';
 
 export const START_FEN =
   'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';

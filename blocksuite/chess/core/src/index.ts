@@ -14,7 +14,7 @@ export {
   promoteVariation,
   setComment,
   setNags,
-} from './edit-tree';
+} from './edit-tree.js';
 export {
   clonePosition,
   FenError,
@@ -24,7 +24,7 @@ export {
   START_FEN,
   startPosition,
   toFen,
-} from './fen';
+} from './fen.js';
 export {
   back,
   childrenAt,
@@ -37,14 +37,14 @@ export {
   positionAt,
   switchBranch,
   walk,
-} from './move-tree';
+} from './move-tree.js';
 export {
   parsePgn,
   parsePgnGames,
   PgnError,
   serializePgn,
   serializePgnGames,
-} from './pgn';
+} from './pgn.js';
 export {
   applyMove,
   findMove,
@@ -59,8 +59,14 @@ export {
   makeMove,
   perft,
   unmakeMove,
-} from './position';
-export { moveToSan, moveToUci, normalizeSan, SanError, sanToMove } from './san';
+} from './position.js';
+export {
+  moveToSan,
+  moveToUci,
+  normalizeSan,
+  SanError,
+  sanToMove,
+} from './san.js';
 export {
   algebraicToSquare,
   charToType,
@@ -71,7 +77,7 @@ export {
   squareOf,
   squareToAlgebraic,
   typeToSanChar,
-} from './square';
+} from './square.js';
 export {
   BISHOP,
   BLACK,
@@ -108,4 +114,4 @@ export {
   type Square,
   typeOf,
   WHITE,
-} from './types';
+} from './types.js';

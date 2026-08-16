@@ -1,9 +1,9 @@
 import { parsePgn } from '@blocksuite/chess-core';
 import { describe, expect, it } from 'vitest';
 
-import { chessGameMarkdownAdapterMatcher } from '../adapters/markdown';
-import { chessGameSlashMenuConfig } from '../configs/slash-menu';
-import { ChessGameBlockSchema, EMPTY_PGN } from '../model';
+import { chessGameMarkdownAdapterMatcher } from '../adapters/markdown.js';
+import { chessGameSlashMenuConfig } from '../configs/slash-menu.js';
+import { ChessGameBlockSchema, EMPTY_PGN } from '../model.js';
 
 const codeNode = (lang: string | null, value: string) =>
   ({

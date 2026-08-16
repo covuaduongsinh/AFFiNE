@@ -3,7 +3,7 @@ import type { SlashMenuConfig } from '@blocksuite/affine-widget-slash-menu';
 import { TableIcon } from '@blocksuite/icons/lit';
 import type { BlockModel } from '@blocksuite/store';
 
-import { EMPTY_PGN } from '../model';
+import { EMPTY_PGN } from '../model.js';
 
 /** A short illustrative game so a fresh block is not a blank rectangle. */
 const SAMPLE_PGN = `[Event "Scholar's mate"]

@@ -25,7 +25,8 @@ export type Language =
   | 'fa'
   | 'nb-NO'
   | 'kk'
-  | 'tr';
+  | 'tr'
+  | 'vi';
 
 export type LanguageResource = typeof en;
 export const SUPPORTED_LANGUAGES: Record<
@@ -51,6 +52,15 @@ export const SUPPORTED_LANGUAGES: Record<
     originalName: '한국어(대한민국)',
     flagEmoji: '🇰🇷',
     resource: () => import('./ko.json'),
+  },
+  vi: {
+    name: 'Vietnamese',
+    originalName: 'Tiếng Việt',
+    flagEmoji: '🇻🇳',
+    // Partial on purpose: i18next falls back to English key by key, so a
+    // growing translation is useful immediately instead of blocking on 2,567
+    // strings.
+    resource: () => import('./vi.json'),
   },
   'pt-BR': {
     name: 'Portuguese (Brazil)',

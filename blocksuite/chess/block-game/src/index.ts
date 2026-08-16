@@ -1,6 +1,6 @@
-export { chessGameMarkdownAdapterMatcher } from './adapters/markdown';
-export { effects } from './effects';
-export { ChessGameBlockComponent } from './game-block';
+export { chessGameMarkdownAdapterMatcher } from './adapters/markdown.js';
+export { effects } from './effects.js';
+export { ChessGameBlockComponent } from './game-block.js';
 export {
   type BoardOrientation,
   ChessGameBlockModel,
@@ -8,9 +8,9 @@ export {
   ChessGameBlockSchemaExtension,
   type ChessGameProps,
   EMPTY_PGN,
-} from './model';
+} from './model.js';
 export {
   type ChessGameRenderer,
   ChessGameRendererExtension,
   ChessGameRendererIdentifier,
-} from './renderer';
+} from './renderer.js';

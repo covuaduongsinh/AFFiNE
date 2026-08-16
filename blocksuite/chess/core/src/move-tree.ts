@@ -1,5 +1,5 @@
-import { parseFen } from './fen';
-import type { Game, MoveNode, MovePath, Position } from './types';
+import { parseFen } from './fen.js';
+import type { Game, MoveNode, MovePath, Position } from './types.js';
 
 /**
  * Navigation over the move tree.

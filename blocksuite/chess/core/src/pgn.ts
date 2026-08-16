@@ -1,6 +1,6 @@
-import { clonePosition, parseFen, startPosition, toFen } from './fen';
-import { applyMove } from './position';
-import { moveToSan, sanToMove } from './san';
+import { clonePosition, parseFen, startPosition, toFen } from './fen.js';
+import { applyMove } from './position.js';
+import { moveToSan, sanToMove } from './san.js';
 import {
   type Game,
   type GameHeader,
@@ -8,7 +8,7 @@ import {
   type MoveNode,
   type Position,
   WHITE,
-} from './types';
+} from './types.js';
 
 export class PgnError extends Error {
   override name = 'PgnError';
