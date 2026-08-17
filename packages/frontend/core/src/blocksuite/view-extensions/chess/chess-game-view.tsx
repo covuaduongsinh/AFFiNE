@@ -309,6 +309,11 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
    * Every edit re-parses the stored PGN rather than reusing the memoised game,
    * so a mutation can never be applied twice to the same in-memory tree. The
    * callback may return the path to select afterwards.
+   *
+   * `captureSync` opens a fresh undo step first. Without it an edit merges into
+   * whatever the document did last — delete a variation right after inserting
+   * the block and a single undo took the whole block away instead of putting
+   * the moves back.
    */
   const mutate = useCallback(
     (edit: (game: Game) => MovePath | void) => {
@@ -320,6 +325,7 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
         return;
       }
       const nextPath = edit(fresh);
+      model.store.captureSync();
       model.store.updateBlock(model, {
         pgn: serializePgn(fresh),
         ...(nextPath === undefined ? {} : { currentPath: nextPath }),
@@ -397,6 +403,7 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
   }, [game, goTo, path]);
 
   const flip = useCallback(() => {
+    model.store.captureSync();
     model.store.updateBlock(model, {
       orientation: orientation === 'white' ? 'black' : 'white',
     });
@@ -435,6 +442,7 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
       return;
     }
     // The old path almost certainly does not address anything in the new game.
+    model.store.captureSync();
     model.store.updateBlock(model, { pgn: draftValue, currentPath: [] });
     setDraft(null);
   }, [draftValue, model, readonly]);

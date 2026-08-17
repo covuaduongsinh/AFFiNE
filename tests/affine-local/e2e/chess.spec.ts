@@ -179,6 +179,37 @@ test('the PGN editor replaces the game', async ({ page }) => {
   await expect(game).not.toContainText('Qxf7');
 });
 
+test('the PGN box takes the caret while the block is selected', async ({
+  page,
+}) => {
+  await newDocWithFocus(page, 'Selected block');
+  await slashInsert(page, 'Chess game (example', 'affine-chess-game');
+  const game = page.locator('affine-chess-game');
+
+  await game.getByTestId('chess-edit-toggle').click();
+  const editor = game.getByTestId('chess-pgn-editor');
+  await expect(editor).toBeVisible();
+
+  // Replaying a game selects the block, so this is the state a user is
+  // normally in by the time they open the editor. A live block selection kept
+  // focus pinned to the editor host: the box showed no caret and swallowed
+  // every keystroke and paste, while the buttons around it still worked.
+  await game.locator('[role="grid"]').first().click();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('affine-block-selection')).not.toHaveCount(0);
+
+  await editor.click();
+  await expect(editor, 'the PGN box never took the caret').toBeFocused();
+
+  // Type with the keyboard alone: no locator call that would focus it for us.
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.type('1. f4 e5 *', { delay: 30 });
+  await expect(editor).toHaveValue('1. f4 e5 *');
+
+  await game.getByTestId('chess-pgn-save').click();
+  await expect(game).toContainText('f4');
+});
+
 test('a PGN pasted into the editor lands in the box', async ({ page }) => {
   await newDocWithFocus(page, 'Paste into editor');
   await slashInsert(page, 'Chess game (example', 'affine-chess-game');
@@ -306,6 +337,26 @@ test('a variation can be promoted to the main line', async ({ page }) => {
   // The promoted move now leads, so the old main line is the one in brackets.
   await game.getByTestId('chess-edit-toggle').click();
   await expect(game.getByTestId('chess-pgn-editor')).toHaveValue(/1\. e4 c5/);
+});
+
+test('deleting from a move can be undone', async ({ page }) => {
+  await newDocWithFocus(page, 'Undo delete');
+  await slashInsert(page, 'Chess game (example', 'affine-chess-game');
+  const game = page.locator('affine-chess-game');
+  await expect(game).toContainText('Qxf7');
+
+  await game.getByText(/^Nf6/).first().click();
+  await game.getByTestId('chess-delete-from').click();
+  await expect(game).not.toContainText('Qxf7');
+
+  // Every edit needs its own undo step. Without one the edit merged into the
+  // block's own insertion, so a single Ctrl+Z removed the whole block instead
+  // of putting the moves back — the game was simply gone.
+  await page.locator('affine-paragraph').first().click();
+  await page.keyboard.press('ControlOrMeta+z');
+
+  await expect(page.locator('affine-chess-game')).toHaveCount(1);
+  await expect(page.locator('affine-chess-game')).toContainText('Qxf7');
 });
 
 test('the example game replays through its move list', async ({ page }) => {

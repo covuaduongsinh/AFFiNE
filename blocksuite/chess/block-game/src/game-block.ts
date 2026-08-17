@@ -48,6 +48,29 @@ export class ChessGameBlockComponent extends CaptionedBlockComponent<ChessGameBl
       .some(selection => selection.blockId === this.model.id);
   }
 
+  /**
+   * Hand focus to a field inside the block when the user clicks into one.
+   *
+   * While a block selection is live the editor host keeps pulling focus back to
+   * itself, so clicking the PGN box or a comment left no caret and swallowed
+   * every keystroke and paste. Selecting the block and then editing inside it
+   * is the ordinary way to work here — replaying moves selects it — so the
+   * selection has to yield rather than fight the field.
+   */
+  private readonly _onFieldFocus = (event: FocusEvent) => {
+    const target = event.target;
+    if (
+      !(
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLInputElement
+      )
+    ) {
+      return;
+    }
+    if (this.std.selection.filter(BlockSelection).length === 0) return;
+    this.std.selection.clear(['block']);
+  };
+
   override renderBlock() {
     const renderer = this.std.getOptional(ChessGameRendererIdentifier);
 
@@ -56,6 +79,7 @@ export class ChessGameBlockComponent extends CaptionedBlockComponent<ChessGameBl
         contenteditable="false"
         class="chess-game-container"
         data-selected=${this.isBlockSelected ? 'true' : 'false'}
+        @focusin=${this._onFieldFocus}
       >
         ${
           renderer
