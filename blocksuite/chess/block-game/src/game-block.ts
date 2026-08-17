@@ -24,6 +24,16 @@ export class ChessGameBlockComponent extends CaptionedBlockComponent<ChessGameBl
       outline-color: var(--affine-primary-color);
     }
 
+    /*
+     * The React bridge's anchor element is inline by default. This block
+     * happens to survive that because its columns carry a flex-basis, but
+     * relying on that is luck rather than design.
+     */
+    .chess-game-container > lit-react-portal {
+      display: block;
+      width: 100%;
+    }
+
     .chess-game-placeholder {
       padding: 24px;
       text-align: center;

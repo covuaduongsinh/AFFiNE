@@ -13,8 +13,13 @@ export class ChessBoardBlockComponent extends CaptionedBlockComponent<ChessBoard
     }
 
     .chess-board-container {
-      display: flex;
-      justify-content: center;
+      /*
+       * The width here is load-bearing. The board inside is sized with
+       * width: 100%, so without a definite width to resolve against it
+       * collapses to zero — the block renders, the DOM is complete, and
+       * nothing is visible.
+       */
+      width: 100%;
       /*
        * A diagram wider than about 480px stops reading as part of the document
        * and starts reading as a separate app, so the board is capped rather
@@ -25,6 +30,16 @@ export class ChessBoardBlockComponent extends CaptionedBlockComponent<ChessBoard
       border-radius: 4px;
       outline: 2px solid transparent;
       transition: outline-color 120ms ease;
+    }
+
+    /*
+     * The React bridge's anchor element carries no styles of its own and so
+     * defaults to display: inline, which gives its contents nothing to size
+     * against.
+     */
+    .chess-board-container > lit-react-portal {
+      display: block;
+      width: 100%;
     }
 
     .chess-board-container[data-selected='true'] {

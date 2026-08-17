@@ -65,7 +65,9 @@ export class ChessViewExtension extends ViewExtensionProvider<ChessViewOptions> 
       })
     );
 
-    // Pasting only makes sense where the document is editable.
+    // Pasting only makes sense where the document is editable. Registering
+    // here — after the root block's own clipboard watcher — is what gives this
+    // handler the chance to run first.
     if (!this.isPreview(context.scope)) {
       context.register(ChessPasteWatcher);
     }
