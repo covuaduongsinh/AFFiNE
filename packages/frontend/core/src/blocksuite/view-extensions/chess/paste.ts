@@ -1,117 +1,122 @@
 import { DisposableGroup } from '@blocksuite/affine/global/disposable';
-import { LifeCycleWatcher } from '@blocksuite/affine/std';
 import {
-  type BlockSnapshot,
-  nanoid,
-  type TransformerMiddleware,
-} from '@blocksuite/affine/store';
+  BlockSelection,
+  LifeCycleWatcher,
+  TextSelection,
+  type UIEventHandler,
+} from '@blocksuite/affine/std';
+import type { BlockModel } from '@blocksuite/affine/store';
 import { type ChessTextMatch, detectChessText } from '@blocksuite/chess-core';
 
 /**
  * Turns a pasted position or game into the matching block.
  *
  * A coach copies a FEN out of an engine or a PGN out of Lichess and pastes it;
- * getting a board instead of a wall of monospace text is the whole point. The
- * work happens on the clipboard's slice snapshot, before anything reaches the
- * document, so an unrecognised paste is left completely untouched.
- */
-
-/** Plain text arrives as one note whose children are a paragraph per line. */
-function readPastedLines(content: BlockSnapshot[]): string[] | null {
-  if (content.length !== 1) return null;
-  const note = content[0];
-  if (note.flavour !== 'affine:note') return null;
-
-  const lines: string[] = [];
-  for (const child of note.children) {
-    if (child.flavour !== 'affine:paragraph') return null;
-    // Anything richer than a plain run of text is not a pasted FEN or PGN.
-    if (child.children.length > 0) return null;
-
-    const text = child.props?.text as
-      | { delta?: { insert?: string }[] }
-      | undefined;
-    if (!text?.delta) return null;
-    lines.push(text.delta.map(op => op.insert ?? '').join(''));
-  }
-
-  return lines;
-}
-
-function chessSnapshot(match: ChessTextMatch): BlockSnapshot | null {
-  if (!match) return null;
-
-  if (match.kind === 'fen') {
-    return {
-      type: 'block',
-      id: nanoid(),
-      flavour: 'affine:chess-board',
-      props: {
-        fen: match.fen,
-        orientation: 'white',
-        caption: '',
-        arrows: [],
-        highlights: [],
-        editable: true,
-      },
-      children: [],
-    };
-  }
-
-  return {
-    type: 'block',
-    id: nanoid(),
-    flavour: 'affine:chess-game',
-    props: {
-      pgn: match.pgn,
-      currentPath: [],
-      orientation: 'white',
-      caption: '',
-    },
-    children: [],
-  };
-}
-
-export const chessPasteMiddleware =
-  (): TransformerMiddleware =>
-  ({ slots }) => {
-    const subscription = slots.beforeImport.subscribe(payload => {
-      if (payload.type !== 'slice') return;
-
-      const lines = readPastedLines(payload.snapshot.content);
-      if (!lines) return;
-
-      const match = detectChessText(lines.join('\n'));
-      const snapshot = chessSnapshot(match);
-      if (!snapshot) return;
-
-      // Replace the paragraphs inside the note rather than the note itself, so
-      // the block lands wherever a pasted paragraph would have.
-      payload.snapshot.content[0].children = [snapshot];
-    });
-
-    return () => subscription.unsubscribe();
-  };
-
-/**
- * Registers {@link chessPasteMiddleware} with the editor's clipboard.
+ * getting a board instead of a wall of monospace text is the whole point.
  *
- * A separate watcher rather than an edit to `PageClipboard`: clipboard
- * middlewares compose, so the chess handling can be added and removed without
- * touching the upstream widget.
+ * This hooks the `paste` event rather than the clipboard's transformer
+ * middleware. The middleware route looks tidier but does not work: when the
+ * caret sits inside a paragraph, `PasteTr` merges the incoming text as deltas
+ * at the cursor and never looks at the block structure a middleware built.
+ * Handling the event means deciding before any of that runs.
  */
+export function chessBlockProps(match: NonNullable<ChessTextMatch>) {
+  return match.kind === 'fen'
+    ? ([
+        'affine:chess-board',
+        {
+          fen: match.fen,
+          orientation: 'white',
+          caption: '',
+          arrows: [],
+          highlights: [],
+          editable: true,
+        },
+      ] as const)
+    : ([
+        'affine:chess-game',
+        {
+          pgn: match.pgn,
+          currentPath: [],
+          orientation: 'white',
+          caption: '',
+        },
+      ] as const);
+}
+
+/** An untouched paragraph should be replaced, not pushed down. */
+export function isEmptyParagraph(model: BlockModel): boolean {
+  if (model.flavour !== 'affine:paragraph') return false;
+  const text = (model.props as { text?: { length: number } }).text;
+  return (text?.length ?? 0) === 0;
+}
+
 export class ChessPasteWatcher extends LifeCycleWatcher {
   static override key = 'affine-chess-paste';
 
   private readonly _disposables = new DisposableGroup();
 
+  /** The block the caret or selection is currently in. */
+  private _currentModel(): BlockModel | null {
+    const text = this.std.selection.find(TextSelection);
+    const blockId =
+      text?.blockId ?? this.std.selection.find(BlockSelection)?.blockId;
+    if (!blockId) return null;
+    return this.std.store.getBlock(blockId)?.model ?? null;
+  }
+
+  /** Returns true when a block was inserted. */
+  private _insert(match: NonNullable<ChessTextMatch>): boolean {
+    const model = this._currentModel();
+    if (!model) return false;
+
+    const { store } = this.std;
+    const parent = store.getParent(model);
+    if (!parent) return false;
+
+    const index = parent.children.indexOf(model);
+    if (index === -1) return false;
+
+    const [flavour, props] = chessBlockProps(match);
+    const replacing = isEmptyParagraph(model);
+
+    const id = store.addBlock(
+      flavour,
+      props,
+      parent,
+      replacing ? index : index + 1
+    );
+    if (!id) return false;
+
+    if (replacing) store.deleteBlock(model);
+    return true;
+  }
+
+  private readonly _onPaste: UIEventHandler = ctx => {
+    if (this.std.store.readonly) return false;
+
+    const event = ctx.get('clipboardState').raw;
+    const text = event.clipboardData?.getData('text/plain');
+    if (!text) return false;
+
+    const match = detectChessText(text);
+    if (!match) return false;
+
+    if (!this._insert(match)) return false;
+
+    // Only claim the event once a block actually landed, so a paste we cannot
+    // place still falls through to the normal clipboard path.
+    event.preventDefault();
+    return true;
+  };
+
   override mounted() {
     super.mounted();
-    const middleware = chessPasteMiddleware();
-    this.std.clipboard.use(middleware);
-    this._disposables.add({
-      dispose: () => this.std.clipboard.unuse(middleware),
-    });
+    // Handlers are unshifted, so the most recently registered runs first, and
+    // the dispatcher stops at the first one returning true. This watcher is
+    // registered after the root block's PageClipboard, which is what lets it
+    // decide before the default paste happens — keep that ordering.
+    this._disposables.add(this.std.event.add('paste', this._onPaste));
   }
 
   override unmounted() {
