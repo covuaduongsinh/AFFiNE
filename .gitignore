@@ -97,6 +97,10 @@ af.cmd
 storageState.json
 /.understand-anything
 
+# self-hosted server state: postgres data, blob storage, generated config
+/.docker/selfhost/data/
+/.docker/selfhost/config/
+
 # local test/browser artifacts
 /.playwright-browsers/
 **/.vitest-attachments/

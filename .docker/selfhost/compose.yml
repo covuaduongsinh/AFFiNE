@@ -1,7 +1,9 @@
 name: affine
 services:
   affine:
-    image: ghcr.io/toeverything/affine:stable
+    # Pinned to the version this checkout builds its frontend from, so the
+    # GraphQL schema the app queries is the one the server answers with.
+    image: ghcr.io/toeverything/affine:0.27.0
     container_name: affine_server
     ports:
       - '3010:3010'
@@ -22,7 +24,7 @@ services:
     restart: unless-stopped
 
   affine_migration:
-    image: ghcr.io/toeverything/affine:stable
+    image: ghcr.io/toeverything/affine:0.27.0
     container_name: affine_migration_job
     volumes:
       - ./data/storage:/root/.affine/storage
