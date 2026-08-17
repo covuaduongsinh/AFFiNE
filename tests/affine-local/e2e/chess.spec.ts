@@ -360,6 +360,66 @@ test('a variation can be promoted to the main line', async ({ page }) => {
   await expect(game.getByTestId('chess-pgn-editor')).toHaveValue(/1\. e4 c5/);
 });
 
+test('typing survives an interceptor that kills keys in textareas', async ({
+  page,
+}) => {
+  // Registered before any app code loads, exactly like an extension's content
+  // script: every keydown and paste aimed at a textarea has its default
+  // cancelled. This is the machine the bug was reported from — five fixes
+  // passed on clean Chromium while that machine stayed broken.
+  await page.addInitScript(() => {
+    const kill = (event: Event) => {
+      if (event.target instanceof HTMLTextAreaElement) event.preventDefault();
+    };
+    window.addEventListener('keydown', kill, true);
+    window.addEventListener('paste', kill, true);
+  });
+
+  await newDocWithFocus(page, 'Hostile');
+  await slashInsert(page, 'Chess game', 'affine-chess-game');
+  const game = page.locator('affine-chess-game');
+
+  await game.getByTestId('chess-edit-toggle').click();
+  const editor = game.getByTestId('chess-pgn-editor');
+  await expect(editor).toBeFocused();
+
+  // Select-all without keys — the interceptor kills Ctrl+A's default too, and
+  // healing shortcuts is tested by the shield, not by this arrangement step.
+  await editor.evaluate(el => (el as HTMLTextAreaElement).select());
+  await page.keyboard.type('1. d4 d5 *', { delay: 30 });
+
+  // Every one of those keystrokes had its default cancelled; the shield must
+  // have performed the edits itself.
+  await expect(editor).toHaveValue('1. d4 d5 *');
+  await expect(game).toContainText(/đã cứu: [1-9]/);
+
+  await game.getByTestId('chess-pgn-save').click();
+  await expect(game).toContainText('d4');
+});
+
+test('the Dán PGN button reads the clipboard without the keyboard', async ({
+  page,
+}) => {
+  await newDocWithFocus(page, 'Clipboard button');
+  await slashInsert(page, 'Chess game (example', 'affine-chess-game');
+  const game = page.locator('affine-chess-game');
+
+  await game.getByTestId('chess-edit-toggle').click();
+  const editor = game.getByTestId('chess-pgn-editor');
+  await expect(editor).toBeVisible();
+
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.evaluate(() =>
+    navigator.clipboard.writeText('[Event "Button"]\n\n1. c4 e5 2. Nc3 Nf6 *')
+  );
+  await game.getByTestId('chess-pgn-paste-btn').click();
+
+  await expect(editor).toHaveValue(/1\. c4 e5 2\. Nc3 Nf6/);
+  await game.getByTestId('chess-pgn-save').click();
+  await expect(game).toContainText('Nc3');
+  await expect(game).not.toContainText('Qxf7');
+});
+
 test('deleting from a move can be undone', async ({ page }) => {
   await newDocWithFocus(page, 'Undo delete');
   await slashInsert(page, 'Chess game (example', 'affine-chess-game');
