@@ -76,6 +76,9 @@ export const ChessBoardView = ({ model }: ChessBoardViewProps) => {
       );
       // An illegal drag just snaps back; nothing is written to the document.
       if (!move) return;
+      // Each move is its own undo step, or one Ctrl+Z takes the block away
+      // along with everything played on it.
+      model.store.captureSync();
       model.store.updateBlock(model, {
         fen: toFen(applyMove(position, move)),
       });
@@ -91,6 +94,7 @@ export const ChessBoardView = ({ model }: ChessBoardViewProps) => {
       const existing = current.findIndex(
         item => item.from === arrow.from && item.to === arrow.to
       );
+      model.store.captureSync();
       model.store.updateBlock(model, {
         arrows:
           existing === -1

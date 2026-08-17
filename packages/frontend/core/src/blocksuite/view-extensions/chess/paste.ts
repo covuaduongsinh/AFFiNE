@@ -95,6 +95,10 @@ export class ChessPasteWatcher extends LifeCycleWatcher {
     model: BlockModel,
     match: NonNullable<ChessTextMatch>
   ): boolean {
+    // Overwriting a game is exactly the kind of thing to want back, so open a
+    // fresh undo step rather than letting it merge into the previous edit.
+    this.std.store.captureSync();
+
     if (match.kind === 'pgn' && model.flavour === 'affine:chess-game') {
       // The stored path addresses the old game, so start from the beginning.
       this.std.store.updateBlock(model, {
