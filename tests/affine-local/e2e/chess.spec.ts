@@ -151,6 +151,120 @@ test('a position is the same size standing alone as inside a game', async ({
   expect(Math.abs(alone - inGame)).toBeLessThan(2);
 });
 
+test('the PGN editor replaces the game', async ({ page }) => {
+  await newDocWithFocus(page, 'Edit PGN');
+  await slashInsert(page, 'Chess game (example', 'affine-chess-game');
+  const game = page.locator('affine-chess-game');
+  await expect(game).toContainText('Qxf7');
+
+  await game.getByTestId('chess-edit-toggle').click();
+  const editor = game.getByTestId('chess-pgn-editor');
+  await expect(editor).toBeVisible();
+
+  await editor.fill('1. d4 d5 2. c4 e6 *');
+  await game.getByTestId('chess-pgn-save').click();
+
+  await expect(game).toContainText('d4');
+  await expect(game).toContainText('c4');
+  await expect(game).not.toContainText('Qxf7');
+});
+
+test('a PGN that will not parse keeps the text and offers a fix', async ({
+  page,
+}) => {
+  await newDocWithFocus(page, 'Broken PGN');
+  await slashInsert(page, 'Chess game', 'affine-chess-game');
+  const game = page.locator('affine-chess-game');
+
+  await game.getByTestId('chess-edit-toggle').click();
+  const editor = game.getByTestId('chess-pgn-editor');
+  // e5 is not a legal first move for White.
+  await editor.fill('1. e5 e4 *');
+
+  // Save must refuse, and the text must survive so it can be corrected.
+  await expect(game.getByTestId('chess-pgn-save')).toBeDisabled();
+  await expect(editor).toHaveValue('1. e5 e4 *');
+
+  await editor.fill('1. e4 e5 *');
+  await expect(game.getByTestId('chess-pgn-save')).toBeEnabled();
+  await game.getByTestId('chess-pgn-save').click();
+  await expect(game).toContainText('e4');
+});
+
+test('arrow keys inside the editor move the caret, not the game', async ({
+  page,
+}) => {
+  await newDocWithFocus(page, 'Editor keys');
+  await slashInsert(page, 'Chess game (example', 'affine-chess-game');
+  const game = page.locator('affine-chess-game');
+
+  await game.getByTestId('chess-edit-toggle').click();
+  const editor = game.getByTestId('chess-pgn-editor');
+  await editor.click();
+  await editor.press('ArrowRight');
+  await editor.press('ArrowRight');
+
+  // The board must still be at the start: no move was stepped into.
+  await expect(
+    page.locator('affine-chess-game [data-piece][data-square="e2"]')
+  ).toHaveCount(1);
+});
+
+test('pasting a PGN onto a game replaces it instead of adding another', async ({
+  page,
+}) => {
+  await newDocWithFocus(page, 'Paste over');
+  await slashInsert(page, 'Chess game (example', 'affine-chess-game');
+  await expect(page.locator('affine-chess-game')).toContainText('Qxf7');
+
+  // Select the block itself, then paste.
+  await page.locator('affine-chess-game [role="grid"]').first().click();
+  await page.evaluate(() => navigator.clipboard.writeText('1. d4 Nf6 2. c4 *'));
+  await page.keyboard.press('ControlOrMeta+v');
+
+  await expect(page.locator('affine-chess-game')).toHaveCount(1);
+  await expect(page.locator('affine-chess-game')).toContainText('Nf6');
+  await expect(page.locator('affine-chess-game')).not.toContainText('Qxf7');
+});
+
+test('a move can be annotated with a symbol and a comment', async ({
+  page,
+}) => {
+  await newDocWithFocus(page, 'Annotate');
+  await slashInsert(page, 'Chess game (example', 'affine-chess-game');
+  const game = page.locator('affine-chess-game');
+
+  // Select the first move so the annotation tools appear.
+  await game.getByText('e4', { exact: true }).first().click();
+  await game.getByTitle('Brilliant').click();
+  await game.getByTestId('chess-comment-input').fill('The best start.');
+  await game.getByTestId('chess-comment-input').press('Enter');
+
+  await expect(game).toContainText('!!');
+  await expect(game).toContainText('The best start.');
+});
+
+test('a variation can be promoted to the main line', async ({ page }) => {
+  await newDocWithFocus(page, 'Promote');
+  await slashInsert(page, 'Chess game', 'affine-chess-game');
+  const game = page.locator('affine-chess-game');
+
+  await game.getByTestId('chess-edit-toggle').click();
+  await game
+    .getByTestId('chess-pgn-editor')
+    .fill('1. e4 e5 (1... c5 2. Nf3) 2. Nf3 *');
+  await game.getByTestId('chess-pgn-save').click();
+  await expect(game).toContainText('c5');
+
+  // Select the sideline, then promote it.
+  await game.getByText('c5', { exact: true }).first().click();
+  await game.getByTestId('chess-promote').click();
+
+  // The promoted move now leads, so the old main line is the one in brackets.
+  await game.getByTestId('chess-edit-toggle').click();
+  await expect(game.getByTestId('chess-pgn-editor')).toHaveValue(/1\. e4 c5/);
+});
+
 test('the example game replays through its move list', async ({ page }) => {
   await newDocWithFocus(page, 'Game');
   await slashInsert(page, 'Chess game (example', 'affine-chess-game');

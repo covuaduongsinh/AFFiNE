@@ -56,8 +56,27 @@ export class ChessPasteWatcher extends LifeCycleWatcher {
 
   private readonly _disposables = new DisposableGroup();
 
+  /**
+   * The chess block the user is currently inside, if any.
+   *
+   * Clicking a chess block produces no selection — it holds no text and does
+   * not handle clicks as selection — but its container is focusable, so the
+   * active element is what actually tells us where the user is.
+   */
+  private _focusedChessModel(): BlockModel | null {
+    const active = document.activeElement;
+    if (!(active instanceof HTMLElement)) return null;
+
+    const host = active.closest('affine-chess-game, affine-chess-board');
+    const model = (host as { model?: BlockModel } | null)?.model;
+    return model ?? null;
+  }
+
   /** The block the caret or selection is currently in. */
   private _currentModel(): BlockModel | null {
+    const focused = this._focusedChessModel();
+    if (focused) return focused;
+
     const text = this.std.selection.find(TextSelection);
     const blockId =
       text?.blockId ?? this.std.selection.find(BlockSelection)?.blockId;
@@ -65,10 +84,40 @@ export class ChessPasteWatcher extends LifeCycleWatcher {
     return this.std.store.getBlock(blockId)?.model ?? null;
   }
 
-  /** Returns true when a block was inserted. */
+  /**
+   * Pasting onto a chess block replaces what it holds.
+   *
+   * Dropping a fresh game next to the one you meant to overwrite is never what
+   * anyone wants, and this is the only way to change a board or a game without
+   * opening its editor.
+   */
+  private _replaceInPlace(
+    model: BlockModel,
+    match: NonNullable<ChessTextMatch>
+  ): boolean {
+    if (match.kind === 'pgn' && model.flavour === 'affine:chess-game') {
+      // The stored path addresses the old game, so start from the beginning.
+      this.std.store.updateBlock(model, {
+        pgn: match.pgn,
+        currentPath: [],
+      });
+      return true;
+    }
+
+    if (match.kind === 'fen' && model.flavour === 'affine:chess-board') {
+      this.std.store.updateBlock(model, { fen: match.fen });
+      return true;
+    }
+
+    return false;
+  }
+
+  /** Returns true when a block was inserted or replaced. */
   private _insert(match: NonNullable<ChessTextMatch>): boolean {
     const model = this._currentModel();
     if (!model) return false;
+
+    if (this._replaceInPlace(model, match)) return true;
 
     const { store } = this.std;
     const parent = store.getParent(model);
@@ -94,6 +143,16 @@ export class ChessPasteWatcher extends LifeCycleWatcher {
 
   private readonly _onPaste: UIEventHandler = ctx => {
     if (this.std.store.readonly) return false;
+
+    // Pasting into the PGN box or a comment field is ordinary text editing.
+    // Claiming it here would replace the whole block instead of typing.
+    const active = document.activeElement;
+    if (
+      active instanceof HTMLTextAreaElement ||
+      active instanceof HTMLInputElement
+    ) {
+      return false;
+    }
 
     const event = ctx.get('clipboardState').raw;
     const text = event.clipboardData?.getData('text/plain');

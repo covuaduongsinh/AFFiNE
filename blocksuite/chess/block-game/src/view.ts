@@ -7,6 +7,7 @@ import { BlockViewExtension, FlavourExtension } from '@blocksuite/std';
 import { literal } from 'lit/static-html.js';
 
 import { chessGameSlashMenuConfig } from './configs/slash-menu.js';
+import { createChessGameToolbarExtension } from './configs/toolbar.js';
 import { effects } from './effects.js';
 
 export class ChessGameViewExtension extends ViewExtensionProvider {
@@ -22,6 +23,7 @@ export class ChessGameViewExtension extends ViewExtensionProvider {
     context.register([
       FlavourExtension('affine:chess-game'),
       BlockViewExtension('affine:chess-game', literal`affine-chess-game`),
+      ...createChessGameToolbarExtension('affine:chess-game'),
     ]);
 
     if (!this.isPreview(context.scope)) {
