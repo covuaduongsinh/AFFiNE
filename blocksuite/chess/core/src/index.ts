@@ -7,6 +7,7 @@
  * assumed. Everything above it (SAN, PGN, the move tree) is built on that base.
  */
 
+export { type ChessTextMatch, detectChessText } from './detect.js';
 export {
   deleteFrom,
   playMove,
