@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { chessBoardMarkdownAdapterMatcher } from '../adapters/markdown.js';
-import { ChessBoardBlockSchema, START_FEN } from '../model.js';
+import {
+  ChessBoardBlockSchema,
+  DEFAULT_BOARD_SIZE,
+  START_FEN,
+} from '../model.js';
 
 /**
  * The adapter's `toMatch` / `fromMatch` predicates decide whether a board
@@ -71,5 +75,24 @@ describe('chess board schema', () => {
     expect(parents).toContain('affine:paragraph');
     // A board holds no text, so it must never accept children.
     expect(ChessBoardBlockSchema.model.children).toEqual([]);
+  });
+});
+
+describe('chess board on the whiteboard', () => {
+  it('may be parented directly to the surface', () => {
+    expect(ChessBoardBlockSchema.model.parent).toContain('affine:surface');
+  });
+
+  it('ships the graphics props a canvas block needs', () => {
+    const props = ChessBoardBlockSchema.model.props?.({} as never);
+    expect(props).toMatchObject({
+      index: 'a0',
+      lockedBySelf: false,
+      rotate: 0,
+    });
+    // Square by default, because a board is square.
+    expect(props?.xywh).toBe(
+      `[0,0,${DEFAULT_BOARD_SIZE},${DEFAULT_BOARD_SIZE}]`
+    );
   });
 });

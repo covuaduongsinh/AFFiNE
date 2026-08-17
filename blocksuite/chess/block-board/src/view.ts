@@ -21,7 +21,13 @@ export class ChessBoardViewExtension extends ViewExtensionProvider {
     super.setup(context);
     context.register([
       FlavourExtension('affine:chess-board'),
-      BlockViewExtension('affine:chess-board', literal`affine-chess-board`),
+      // A board parented to the surface stands alone on the canvas; anywhere
+      // else it is an inline diagram in the document flow.
+      BlockViewExtension('affine:chess-board', model =>
+        model.parent?.flavour === 'affine:surface'
+          ? literal`affine-edgeless-chess-board`
+          : literal`affine-chess-board`
+      ),
     ]);
 
     // A slash menu only exists where there is text to type into.
