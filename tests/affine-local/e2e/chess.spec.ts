@@ -43,7 +43,9 @@ async function newDocWithFocus(page: Page, title: string) {
 
 async function slashInsert(page: Page, item: string, host: string) {
   await page.keyboard.type(`/${item}`);
-  await page.waitForTimeout(500);
+  // Give the menu time to finish filtering: pressing Enter mid-filter picks
+  // whatever was highlighted before the query narrowed.
+  await page.waitForTimeout(1000);
   await page.keyboard.press('Enter');
   await page.waitForSelector(host, { timeout: 30000 });
 }
@@ -116,7 +118,37 @@ test('prose that merely mentions chess is left alone', async ({ page }) => {
   await page.waitForTimeout(1500);
   await expect(page.locator('affine-chess-board')).toHaveCount(0);
   await expect(page.locator('affine-chess-game')).toHaveCount(0);
-  await expect(page.locator('affine-paragraph')).toContainText('I played e4');
+  // Assert against the note rather than a paragraph: the text may land across
+  // more than one, and what matters is that it survived as text.
+  await expect(page.locator('affine-note')).toContainText('I played e4');
+});
+
+test('a position is the same size standing alone as inside a game', async ({
+  page,
+}) => {
+  await newDocWithFocus(page, 'Sizes');
+  await slashInsert(page, 'Chess board', 'affine-chess-board');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await slashInsert(page, 'Chess game (example', 'affine-chess-game');
+
+  const measure = async (host: string) => {
+    const box = await page
+      .locator(`${host} [role="grid"]`)
+      .first()
+      .boundingBox();
+    expect(box, `${host} has no layout box`).not.toBeNull();
+    return box!.width;
+  };
+
+  const alone = await measure('affine-chess-board');
+  const inGame = await measure('affine-chess-game');
+
+  // Boards used to be 480 standing alone and 361 inside a game, so the same
+  // position changed size as you scrolled a lesson.
+  expect(Math.abs(alone - inGame)).toBeLessThan(2);
 });
 
 test('the example game replays through its move list', async ({ page }) => {

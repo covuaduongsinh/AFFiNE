@@ -162,8 +162,25 @@ export const rankCoordinate = style([coordinate, { left: '5%', top: '4%' }]);
 export const onLightSquare = style({ color: 'var(--chess-square-dark)' });
 export const onDarkSquare = style({ color: 'var(--chess-square-light)' });
 
+/**
+ * How big a board is, everywhere in the product.
+ *
+ * The board component owns this rather than each container, because when the
+ * containers each decided for themselves the same position rendered at 480px
+ * standing alone and 361px inside a game — the size jumped as you scrolled a
+ * lesson.
+ *
+ * The value falls out of the tightest layout it has to fit: a game block puts
+ * the board beside its move list inside a 752px note. Take off 32px of padding
+ * and a 16px gap and 704px is left; leaving the move list a comfortable 280px
+ * caps the board at 424px, rounded down to 420.
+ */
+export const BOARD_SIZE = 420;
+
 export const wrapper = style({
   containerType: 'inline-size',
   width: '100%',
+  maxWidth: BOARD_SIZE,
+  margin: '0 auto',
   color: cssVarV2('text/primary'),
 });

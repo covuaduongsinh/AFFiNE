@@ -273,7 +273,11 @@ export const Chessboard = ({
   const leftFile = orientation === 'white' ? 0 : 7;
 
   return (
-    <div className={clsx(styles.wrapper, className)} style={style}>
+    <div
+      data-chess-board="true"
+      className={clsx(styles.wrapper, className)}
+      style={style}
+    >
       <div
         ref={boardRef}
         className={styles.board}
