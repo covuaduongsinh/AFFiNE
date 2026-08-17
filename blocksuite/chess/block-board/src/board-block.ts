@@ -18,15 +18,12 @@ export class ChessBoardBlockComponent extends CaptionedBlockComponent<ChessBoard
        * width: 100%, so without a definite width to resolve against it
        * collapses to zero — the block renders, the DOM is complete, and
        * nothing is visible.
+       *
+       * How *large* the board ends up is not decided here: the board component
+       * caps and centres itself, so a position is the same size whether it
+       * stands alone or sits inside a game.
        */
       width: 100%;
-      /*
-       * A diagram wider than about 480px stops reading as part of the document
-       * and starts reading as a separate app, so the board is capped rather
-       * than filling the note.
-       */
-      max-width: 480px;
-      margin: 0 auto;
       border-radius: 4px;
       outline: 2px solid transparent;
       transition: outline-color 120ms ease;

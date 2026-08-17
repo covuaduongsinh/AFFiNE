@@ -21,8 +21,20 @@ export class EdgelessChessBoardBlockComponent extends toGfxBlockComponent(
     }
 
     affine-edgeless-chess-board .chess-board-container {
-      /* On canvas the board fills its bound instead of being capped. */
+      width: 100%;
+      height: 100%;
+    }
+
+    /* On canvas the board fills the bound the user dragged, not the standard
+       document size. */
+    affine-edgeless-chess-board [data-chess-board] {
       max-width: none;
+      height: 100%;
+    }
+
+    /* Same reason as the page block: the anchor is inline by default. */
+    affine-edgeless-chess-board .chess-board-container > lit-react-portal {
+      display: block;
       width: 100%;
       height: 100%;
     }

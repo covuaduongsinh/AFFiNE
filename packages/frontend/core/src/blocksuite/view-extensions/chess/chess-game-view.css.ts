@@ -1,3 +1,4 @@
+import { BOARD_SIZE } from '@affine/component/ui/chess';
 import { cssVar } from '@toeverything/theme';
 import { cssVarV2 } from '@toeverything/theme/v2';
 import { style } from '@vanilla-extract/css';
@@ -10,10 +11,16 @@ export const container = style({
   backgroundColor: cssVarV2('layer/background/primary'),
 });
 
+/*
+ * The board column is pinned to the standard board size so a position looks
+ * the same here as it does standing alone in the document. When the note is too
+ * narrow to seat the move list beside it, the flex container wraps and the list
+ * moves underneath rather than squeezing the board.
+ */
 export const boardColumn = style({
-  flex: '1 1 280px',
+  flex: `1 1 ${BOARD_SIZE}px`,
   minWidth: 240,
-  maxWidth: 420,
+  maxWidth: BOARD_SIZE,
   display: 'flex',
   flexDirection: 'column',
   gap: 8,
