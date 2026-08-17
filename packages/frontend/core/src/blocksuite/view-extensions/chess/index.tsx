@@ -16,6 +16,7 @@ import { z } from 'zod';
 
 import { ChessBoardView } from './chess-board-view';
 import { ChessGameView } from './chess-game-view';
+import { ChessFieldShield } from './field-shield';
 import { ChessPasteWatcher } from './paste';
 
 const optionsSchema = z.object({
@@ -70,6 +71,7 @@ export class ChessViewExtension extends ViewExtensionProvider<ChessViewOptions> 
     // handler the chance to run first.
     if (!this.isPreview(context.scope)) {
       context.register(ChessPasteWatcher);
+      context.register(ChessFieldShield);
     }
   }
 }

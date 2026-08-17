@@ -245,6 +245,15 @@ interface PgnEditorProps {
   autoFocus: boolean;
 }
 
+/**
+ * Build marker shown in the status line, bumped with each editing fix.
+ *
+ * Three rounds of "still broken" reports could not distinguish a fix that does
+ * not work from a browser tab still running last hour's bundle. With the tag
+ * on screen, a screenshot answers that on its own.
+ */
+const CHESS_BUILD = 'v14';
+
 const PgnEditor = ({
   value,
   error,
@@ -256,6 +265,52 @@ const PgnEditor = ({
   autoFocus,
 }: PgnEditorProps) => {
   const textarea = useRef<HTMLTextAreaElement>(null);
+
+  /**
+   * Live proof of what is reaching the box, shown in the status line.
+   *
+   * The reported symptom — no caret, keystrokes vanishing — cannot be told
+   * apart from a stale bundle or an outside interceptor (an antivirus's
+   * "secure input", an extension) in a screenshot of a dead box. These two
+   * numbers make the next screenshot diagnostic: whether the box holds focus,
+   * and how many edits actually arrived. Temporary; remove once editing is
+   * confirmed working on the user's machine.
+   */
+  const [beat, setBeat] = useState({ caret: false, edits: 0 });
+
+  useEffect(() => {
+    const el = textarea.current;
+    if (!el) return;
+
+    // The state update MUST leave the event dispatch it was born in. Microtask
+    // checkpoints run between listeners of one event, so a synchronous setState
+    // here re-renders mid-bubble: React writes the old controlled value back
+    // into the textarea and updates its value tracker, and by the time the
+    // `input` event reaches React's root it looks like nothing changed — no
+    // onChange, and the keystroke is silently reverted. The diagnostic was
+    // eating the keystrokes it existed to count.
+    let alive = true;
+    const later = (update: () => void) => {
+      setTimeout(() => {
+        if (alive) update();
+      }, 0);
+    };
+    const onInput = () =>
+      later(() => setBeat(b => ({ ...b, edits: b.edits + 1 })));
+    const onFocus = () => later(() => setBeat(b => ({ ...b, caret: true })));
+    const onBlur = () => later(() => setBeat(b => ({ ...b, caret: false })));
+    el.addEventListener('input', onInput);
+    el.addEventListener('focus', onFocus);
+    el.addEventListener('blur', onBlur);
+    // Autofocus may already have fired before these listeners attached.
+    if (document.activeElement === el) setBeat(b => ({ ...b, caret: true }));
+    return () => {
+      alive = false;
+      el.removeEventListener('input', onInput);
+      el.removeEventListener('focus', onFocus);
+      el.removeEventListener('blur', onBlur);
+    };
+  }, []);
 
   // Pressing the edit button means wanting to type, so do not make the user
   // click again — and this way the caret never depends on a click at all.
@@ -273,6 +328,7 @@ const PgnEditor = ({
         spellCheck={false}
         aria-label="PGN source"
         data-testid="chess-pgn-editor"
+        data-chess-field="true"
         placeholder={'[Event "..."]\n\n1. e4 e5 2. Nf3 *'}
         onChange={event => onChange(event.target.value)}
         {...nestedFieldEvents}
@@ -280,6 +336,7 @@ const PgnEditor = ({
       <div className={styles.editorFooter}>
         <span className={clsx(styles.editorStatus, error && styles.error)}>
           {error ?? 'Paste a game, or edit the moves and annotations directly.'}
+          {` — ${CHESS_BUILD} · ${beat.caret ? 'con trỏ: trong ô' : 'con trỏ: ngoài ô'} · phím vào ô: ${beat.edits}`}
         </span>
         {canCancel && (
           <button className={styles.controlButton} onClick={onCancel}>
@@ -706,6 +763,7 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
               key={path.join('.')}
               aria-label="Move comment"
               data-testid="chess-comment-input"
+              data-chess-field="true"
               onBlur={event => applyComment(event.target.value)}
               {...nestedFieldEvents}
               onKeyDown={event => {
