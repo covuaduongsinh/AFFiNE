@@ -183,6 +183,35 @@ const MoveList = ({
   );
 };
 
+/**
+ * BlockSuite listens for pointer and keyboard events at the document level and
+ * acts on them before a field nested inside a block ever sees them.
+ *
+ * Paste is the one that actually bites: the editor's clipboard controller
+ * listens on `document`, calls `preventDefault()` and pastes into the document
+ * instead, so pasting a PGN into this box did nothing at all — the box kept the
+ * old text while the game silently changed underneath. Typing worked, which is
+ * what made the report ("chưa sửa được pgn") look like a focus problem.
+ *
+ * This is the same set the built-in caption editor stops
+ * (`blocksuite/affine/components/src/caption/block-caption.ts`).
+ */
+const stopPropagation = (event: { stopPropagation: () => void }) =>
+  event.stopPropagation();
+
+const nestedFieldEvents = {
+  onPointerDown: stopPropagation,
+  onPointerUp: stopPropagation,
+  onClick: stopPropagation,
+  onDoubleClick: stopPropagation,
+  onMouseDown: stopPropagation,
+  onCut: stopPropagation,
+  onCopy: stopPropagation,
+  onPaste: stopPropagation,
+  onKeyDown: stopPropagation,
+  onKeyUp: stopPropagation,
+} as const;
+
 interface PgnEditorProps {
   value: string;
   error: string | null;
@@ -213,6 +242,7 @@ const PgnEditor = ({
       data-testid="chess-pgn-editor"
       placeholder={'[Event "..."]\n\n1. e4 e5 2. Nf3 *'}
       onChange={event => onChange(event.target.value)}
+      {...nestedFieldEvents}
     />
     <div className={styles.editorFooter}>
       <span className={clsx(styles.editorStatus, error && styles.error)}>
@@ -633,7 +663,9 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
               aria-label="Move comment"
               data-testid="chess-comment-input"
               onBlur={event => applyComment(event.target.value)}
+              {...nestedFieldEvents}
               onKeyDown={event => {
+                event.stopPropagation();
                 if (event.key === 'Enter') event.currentTarget.blur();
               }}
             />

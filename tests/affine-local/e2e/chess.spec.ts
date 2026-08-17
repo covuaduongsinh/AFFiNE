@@ -161,11 +161,48 @@ test('the PGN editor replaces the game', async ({ page }) => {
   const editor = game.getByTestId('chess-pgn-editor');
   await expect(editor).toBeVisible();
 
-  await editor.fill('1. d4 d5 2. c4 e6 *');
+  // Click and type for real. `fill()` sets the value straight on the DOM, and
+  // `pressSequentially()` focuses its target first, so both sail past the bug
+  // this guards: clicking the box never moved the caret into it, leaving the
+  // editor visible but impossible to type in.
+  await editor.click();
+  await expect(editor, 'clicking the PGN box did not focus it').toBeFocused();
+
+  await editor.press('ControlOrMeta+a');
+  await editor.pressSequentially('1. d4 d5 2. c4 e6 *', { delay: 30 });
+  await expect(editor).toHaveValue('1. d4 d5 2. c4 e6 *');
+
   await game.getByTestId('chess-pgn-save').click();
 
   await expect(game).toContainText('d4');
   await expect(game).toContainText('c4');
+  await expect(game).not.toContainText('Qxf7');
+});
+
+test('a PGN pasted into the editor lands in the box', async ({ page }) => {
+  await newDocWithFocus(page, 'Paste into editor');
+  await slashInsert(page, 'Chess game (example', 'affine-chess-game');
+  const game = page.locator('affine-chess-game');
+
+  await game.getByTestId('chess-edit-toggle').click();
+  const editor = game.getByTestId('chess-pgn-editor');
+  await editor.click();
+  await editor.press('ControlOrMeta+a');
+
+  // Copying a game off Lichess and pasting it in is the whole point of the box.
+  // The editor's own clipboard handler listens on `document` and used to claim
+  // this paste, so the text never arrived and the box sat there unchanged.
+  await page.evaluate(() =>
+    navigator.clipboard.writeText('[Event "Pasted"]\n\n1. d4 Nf6 2. c4 e6 *')
+  );
+  await page.keyboard.press('ControlOrMeta+v');
+
+  await expect(editor).toHaveValue(/1\. d4 Nf6 2\. c4 e6/);
+  // And exactly one game: the paste must not spawn a second block.
+  await expect(page.locator('affine-chess-game')).toHaveCount(1);
+
+  await game.getByTestId('chess-pgn-save').click();
+  await expect(game).toContainText('Nf6');
   await expect(game).not.toContainText('Qxf7');
 });
 
@@ -237,8 +274,14 @@ test('a move can be annotated with a symbol and a comment', async ({
   // Select the first move so the annotation tools appear.
   await game.getByText('e4', { exact: true }).first().click();
   await game.getByTitle('Brilliant').click();
-  await game.getByTestId('chess-comment-input').fill('The best start.');
-  await game.getByTestId('chess-comment-input').press('Enter');
+
+  const comment = game.getByTestId('chess-comment-input');
+  await comment.click();
+  // A human types at human speed. With no delay the app, still syncing, drops
+  // the odd keystroke and the assertion fails on a character that never got in.
+  await comment.pressSequentially('The best start.', { delay: 30 });
+  await expect(comment).toHaveValue('The best start.');
+  await comment.press('Enter');
 
   await expect(game).toContainText('!!');
   await expect(game).toContainText('The best start.');
