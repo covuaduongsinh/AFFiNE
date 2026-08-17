@@ -199,10 +199,24 @@ const MoveList = ({
 const stopPropagation = (event: { stopPropagation: () => void }) =>
   event.stopPropagation();
 
+/**
+ * Take the caret by hand when the click did not grant it.
+ *
+ * A `mousedown` listener upstream that calls `preventDefault()` stops the
+ * browser moving focus but still lets `click` through. That leaves a field
+ * which looks alive — every button beside it responds — yet has no caret and
+ * swallows both typing and paste. Asking for focus outright is immune to it.
+ */
+const claimFocus = (event: React.MouseEvent<HTMLElement>) => {
+  event.stopPropagation();
+  const field = event.currentTarget;
+  if (document.activeElement !== field) field.focus();
+};
+
 const nestedFieldEvents = {
   onPointerDown: stopPropagation,
   onPointerUp: stopPropagation,
-  onClick: stopPropagation,
+  onClick: claimFocus,
   onDoubleClick: stopPropagation,
   onMouseDown: stopPropagation,
   onCut: stopPropagation,
@@ -221,6 +235,14 @@ interface PgnEditorProps {
   onChange: (text: string) => void;
   onSave: () => void;
   onCancel: () => void;
+  /**
+   * Whether to put the caret in the box on open.
+   *
+   * True when the user asked for the editor, false when a broken PGN forced it
+   * open — a document that grabs focus on load because one game has a typo in
+   * it would be worse than the problem.
+   */
+  autoFocus: boolean;
 }
 
 const PgnEditor = ({
@@ -231,39 +253,51 @@ const PgnEditor = ({
   onChange,
   onSave,
   onCancel,
-}: PgnEditorProps) => (
-  <div className={styles.editor}>
-    <textarea
-      className={styles.editorTextarea}
-      value={value}
-      readOnly={readonly}
-      spellCheck={false}
-      aria-label="PGN source"
-      data-testid="chess-pgn-editor"
-      placeholder={'[Event "..."]\n\n1. e4 e5 2. Nf3 *'}
-      onChange={event => onChange(event.target.value)}
-      {...nestedFieldEvents}
-    />
-    <div className={styles.editorFooter}>
-      <span className={clsx(styles.editorStatus, error && styles.error)}>
-        {error ?? 'Paste a game, or edit the moves and annotations directly.'}
-      </span>
-      {canCancel && (
-        <button className={styles.controlButton} onClick={onCancel}>
-          Cancel
+  autoFocus,
+}: PgnEditorProps) => {
+  const textarea = useRef<HTMLTextAreaElement>(null);
+
+  // Pressing the edit button means wanting to type, so do not make the user
+  // click again — and this way the caret never depends on a click at all.
+  useEffect(() => {
+    if (autoFocus) textarea.current?.focus();
+  }, [autoFocus]);
+
+  return (
+    <div className={styles.editor}>
+      <textarea
+        ref={textarea}
+        className={styles.editorTextarea}
+        value={value}
+        readOnly={readonly}
+        spellCheck={false}
+        aria-label="PGN source"
+        data-testid="chess-pgn-editor"
+        placeholder={'[Event "..."]\n\n1. e4 e5 2. Nf3 *'}
+        onChange={event => onChange(event.target.value)}
+        {...nestedFieldEvents}
+      />
+      <div className={styles.editorFooter}>
+        <span className={clsx(styles.editorStatus, error && styles.error)}>
+          {error ?? 'Paste a game, or edit the moves and annotations directly.'}
+        </span>
+        {canCancel && (
+          <button className={styles.controlButton} onClick={onCancel}>
+            Cancel
+          </button>
+        )}
+        <button
+          className={styles.primaryButton}
+          onClick={onSave}
+          disabled={readonly || error !== null}
+          data-testid="chess-pgn-save"
+        >
+          Save
         </button>
-      )}
-      <button
-        className={styles.primaryButton}
-        onClick={onSave}
-        disabled={readonly || error !== null}
-        data-testid="chess-pgn-save"
-      >
-        Save
-      </button>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 /** Symbols offered for annotating the selected move, with their NAG numbers. */
 const NAG_CHOICES: { nag: number; symbol: string; label: string }[] = [
@@ -544,6 +578,8 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
           onChange={setDraft}
           onSave={saveDraft}
           onCancel={() => setDraft(null)}
+          // Forced open by a broken PGN, not asked for: leave focus alone.
+          autoFocus={false}
         />
       </div>
     );
@@ -708,6 +744,7 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
           onChange={setDraft}
           onSave={saveDraft}
           onCancel={() => setDraft(null)}
+          autoFocus
         />
       )}
     </div>

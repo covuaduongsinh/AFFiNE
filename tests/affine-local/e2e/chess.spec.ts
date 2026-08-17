@@ -179,6 +179,27 @@ test('the PGN editor replaces the game', async ({ page }) => {
   await expect(game).not.toContainText('Qxf7');
 });
 
+test('opening the editor puts the caret in the box, with no click at all', async ({
+  page,
+}) => {
+  await newDocWithFocus(page, 'Autofocus');
+  await slashInsert(page, 'Chess game (example', 'affine-chess-game');
+  const game = page.locator('affine-chess-game');
+
+  // Pressing the edit button means wanting to type. Not needing the click also
+  // means the caret never depends on the browser granting focus from one.
+  await game.getByTestId('chess-edit-toggle').click();
+  const editor = game.getByTestId('chess-pgn-editor');
+  await expect(editor).toBeFocused();
+
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.type('1. c4 e5 *', { delay: 30 });
+  await expect(editor).toHaveValue('1. c4 e5 *');
+
+  await game.getByTestId('chess-pgn-save').click();
+  await expect(game).toContainText('c4');
+});
+
 test('the PGN box takes the caret while the block is selected', async ({
   page,
 }) => {
