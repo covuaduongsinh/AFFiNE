@@ -11,6 +11,8 @@ type LocalDemoTipsProps = {
   onLogin: () => void;
   onEnableCloud: () => void;
   onClose: () => void;
+  onExport?: () => void;
+  exporting?: boolean;
 };
 
 export const LocalDemoTips = ({
@@ -18,6 +20,8 @@ export const LocalDemoTips = ({
   isLoggedIn,
   onLogin,
   onEnableCloud,
+  onExport,
+  exporting,
 }: LocalDemoTipsProps) => {
   const t = useI18n();
   const buttonLabel = isLoggedIn
@@ -38,6 +42,17 @@ export const LocalDemoTips = ({
       </div>
 
       <div className={styles.tipsRightItem}>
+        {onExport ? (
+          <Button
+            style={{ background: cssVar('white') }}
+            onClick={onExport}
+            loading={exporting}
+            disabled={exporting}
+            data-testid="local-demo-tips-export-button"
+          >
+            {t['Full Backup']()}
+          </Button>
+        ) : null}
         <Button style={{ background: cssVar('white') }} onClick={handleClick}>
           {buttonLabel}
         </Button>

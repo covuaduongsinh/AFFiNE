@@ -4,6 +4,7 @@ import { useLiveData, useService } from '@toeverything/infra';
 import { useCallback, useState } from 'react';
 
 import { useEnableCloud } from '../components/hooks/affine/use-enable-cloud';
+import { useExportWorkspaceSnapshot } from '../components/hooks/affine/use-export-workspace-snapshot';
 import { AuthService } from '../modules/cloud';
 import { GlobalDialogService } from '../modules/dialogs';
 import type { Workspace } from '../modules/workspace';
@@ -67,6 +68,9 @@ export const TopTip = ({
   const [showWarning, setShowWarning] = useState(shouldShowWarning);
   const [showLocalDemoTips, setShowLocalDemoTips] = useState(true);
   const confirmEnableCloud = useEnableCloud();
+  // Enabling cloud needs a reachable server; a local backup never does, so the
+  // banner offers it as the always-available way out.
+  const { exportSnapshot, exporting } = useExportWorkspaceSnapshot(workspace);
 
   const globalDialogService = useService(GlobalDialogService);
   const onLogin = useCallback(() => {
@@ -85,6 +89,8 @@ export const TopTip = ({
         onEnableCloud={() =>
           confirmEnableCloud(workspace, { openPageId: pageId })
         }
+        onExport={exportSnapshot}
+        exporting={exporting}
         onClose={() => {
           setShowLocalDemoTips(false);
         }}
