@@ -4,6 +4,7 @@ import type { ChessGameBlockModel } from '@blocksuite/chess-block-game';
 import {
   algebraicToSquare,
   childrenAt,
+  deleteFrom,
   findMove,
   findPieces,
   type Game,
@@ -17,7 +18,10 @@ import {
   parsePgn,
   playMove,
   positionAt,
+  promoteVariation,
   serializePgn,
+  setComment,
+  setNags,
   squareToAlgebraic,
   toFen,
   WHITE,
@@ -179,6 +183,68 @@ const MoveList = ({
   );
 };
 
+interface PgnEditorProps {
+  value: string;
+  error: string | null;
+  readonly: boolean;
+  /** Hidden when the stored PGN is broken: there is nothing safe to go back to. */
+  canCancel: boolean;
+  onChange: (text: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+}
+
+const PgnEditor = ({
+  value,
+  error,
+  readonly,
+  canCancel,
+  onChange,
+  onSave,
+  onCancel,
+}: PgnEditorProps) => (
+  <div className={styles.editor}>
+    <textarea
+      className={styles.editorTextarea}
+      value={value}
+      readOnly={readonly}
+      spellCheck={false}
+      aria-label="PGN source"
+      data-testid="chess-pgn-editor"
+      placeholder={'[Event "..."]\n\n1. e4 e5 2. Nf3 *'}
+      onChange={event => onChange(event.target.value)}
+    />
+    <div className={styles.editorFooter}>
+      <span className={clsx(styles.editorStatus, error && styles.error)}>
+        {error ?? 'Paste a game, or edit the moves and annotations directly.'}
+      </span>
+      {canCancel && (
+        <button className={styles.controlButton} onClick={onCancel}>
+          Cancel
+        </button>
+      )}
+      <button
+        className={styles.primaryButton}
+        onClick={onSave}
+        disabled={readonly || error !== null}
+        data-testid="chess-pgn-save"
+      >
+        Save
+      </button>
+    </div>
+  </div>
+);
+
+/** Symbols offered for annotating the selected move, with their NAG numbers. */
+const NAG_CHOICES: { nag: number; symbol: string; label: string }[] = [
+  { nag: 1, symbol: '!', label: 'Good move' },
+  { nag: 2, symbol: '?', label: 'Mistake' },
+  { nag: 3, symbol: '!!', label: 'Brilliant' },
+  { nag: 4, symbol: '??', label: 'Blunder' },
+  { nag: 5, symbol: '!?', label: 'Interesting' },
+  { nag: 6, symbol: '?!', label: 'Dubious' },
+];
+
 /**
  * Replays and annotates a game.
  *
@@ -193,6 +259,8 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
   const orientation = useSignalValue(model.props.orientation$);
 
   const [selected, setSelected] = useState<string | null>(null);
+  /** `null` when the PGN editor is closed; the draft text when it is open. */
+  const [draft, setDraft] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const readonly = model.store.readonly;
@@ -204,6 +272,31 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
       return null;
     }
   }, [pgn]);
+
+  /**
+   * Apply an edit to the move tree and write the result back.
+   *
+   * Every edit re-parses the stored PGN rather than reusing the memoised game,
+   * so a mutation can never be applied twice to the same in-memory tree. The
+   * callback may return the path to select afterwards.
+   */
+  const mutate = useCallback(
+    (edit: (game: Game) => MovePath | void) => {
+      if (readonly) return;
+      let fresh: Game;
+      try {
+        fresh = parsePgn(pgn);
+      } catch {
+        return;
+      }
+      const nextPath = edit(fresh);
+      model.store.updateBlock(model, {
+        pgn: serializePgn(fresh),
+        ...(nextPath === undefined ? {} : { currentPath: nextPath }),
+      });
+    },
+    [model, pgn, readonly]
+  );
 
   const path = useMemo(() => currentPath ?? [], [currentPath]);
 
@@ -281,7 +374,7 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
 
   const handleMove = useCallback(
     (from: string, to: string) => {
-      if (!game || !position || readonly) return;
+      if (!position || readonly) return;
       const move = findMove(
         position,
         algebraicToSquare(from),
@@ -289,15 +382,78 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
       );
       if (!move) return;
 
-      const result = playMove(game, path, move);
-      model.store.updateBlock(model, {
-        pgn: serializePgn(game),
-        currentPath: result.path,
-      });
+      mutate(fresh => playMove(fresh, path, move).path);
       setSelected(null);
     },
-    [game, model, path, position, readonly]
+    [mutate, path, position, readonly]
   );
+
+  const openEditor = useCallback(() => setDraft(pgn), [pgn]);
+
+  /**
+   * A PGN that cannot be parsed forces the editor open, so a typo is something
+   * you repair rather than something that bricks the block.
+   */
+  const editing = draft !== null || game === null;
+  const draftValue = draft ?? pgn;
+
+  const saveDraft = useCallback(() => {
+    if (readonly) return;
+    try {
+      parsePgn(draftValue);
+    } catch {
+      return;
+    }
+    // The old path almost certainly does not address anything in the new game.
+    model.store.updateBlock(model, { pgn: draftValue, currentPath: [] });
+    setDraft(null);
+  }, [draftValue, model, readonly]);
+
+  /** Parse error for the text in the editor, or null when it is valid. */
+  const draftError = useMemo(() => {
+    try {
+      parsePgn(draftValue);
+      return null;
+    } catch (error) {
+      return error instanceof Error ? error.message : 'Unreadable PGN';
+    }
+  }, [draftValue]);
+
+  const currentNode = useMemo(
+    () => (game && path.length > 0 ? nodeAt(game, path) : undefined),
+    [game, path]
+  );
+
+  const toggleNag = useCallback(
+    (nag: number) => {
+      const existing = currentNode?.nags ?? [];
+      const next = existing.includes(nag)
+        ? existing.filter(item => item !== nag)
+        : [...existing, nag];
+      mutate(fresh => {
+        setNags(fresh, path, next);
+      });
+    },
+    [currentNode, mutate, path]
+  );
+
+  const applyComment = useCallback(
+    (text: string) => {
+      if (text === (currentNode?.comment ?? '')) return;
+      mutate(fresh => {
+        setComment(fresh, path, text);
+      });
+    },
+    [currentNode, mutate, path]
+  );
+
+  const promote = useCallback(() => {
+    mutate(fresh => promoteVariation(fresh, path));
+  }, [mutate, path]);
+
+  const deleteHere = useCallback(() => {
+    mutate(fresh => deleteFrom(fresh, path));
+  }, [mutate, path]);
 
   /** Arrow keys walk the line; up and down switch between variations. */
   useEffect(() => {
@@ -305,6 +461,14 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
     if (!element) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
+      // Typing in the PGN box or a comment field must move the caret, not the
+      // game — this handler otherwise swallows every arrow key in the block.
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === 'TEXTAREA' || tag === 'INPUT' || target?.isContentEditable) {
+        return;
+      }
+
       switch (event.key) {
         case 'ArrowRight':
           stepForward();
@@ -333,9 +497,16 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
 
   if (!game || !position) {
     return (
-      <div className={styles.error}>
-        This game could not be read as PGN. The text is preserved and can be
-        fixed by editing the block source.
+      <div className={styles.container}>
+        <PgnEditor
+          value={draftValue}
+          error={draftError ?? 'This PGN could not be read.'}
+          readonly={readonly}
+          canCancel={false}
+          onChange={setDraft}
+          onSave={saveDraft}
+          onCancel={() => setDraft(null)}
+        />
       </div>
     );
   }
@@ -394,6 +565,19 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
           <button className={styles.controlButton} onClick={flip} title="Flip">
             ⇅
           </button>
+          {!readonly && (
+            <button
+              className={clsx(
+                styles.controlButton,
+                editing && styles.currentMove
+              )}
+              onClick={() => (editing ? setDraft(null) : openEditor())}
+              title={editing ? 'Close the PGN editor' : 'Edit PGN'}
+              data-testid="chess-edit-toggle"
+            >
+              ✎
+            </button>
+          )}
         </div>
       </div>
 
@@ -409,7 +593,8 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
         <div className={styles.moveList}>
           {game.moves.length === 0 ? (
             <span className={styles.empty}>
-              No moves yet — play one on the board.
+              No moves yet. Paste a PGN here, press ✎ to write one, or just play
+              a move on the board.
             </span>
           ) : (
             <MoveList
@@ -420,7 +605,71 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
             />
           )}
         </div>
+
+        {currentNode && !readonly && (
+          <div className={styles.annotations}>
+            <div className={styles.nagRow}>
+              {NAG_CHOICES.map(({ nag, symbol, label }) => (
+                <button
+                  key={nag}
+                  className={clsx(
+                    styles.nagButton,
+                    currentNode.nags.includes(nag) && styles.nagButtonActive
+                  )}
+                  title={label}
+                  onClick={() => toggleNag(nag)}
+                >
+                  {symbol}
+                </button>
+              ))}
+            </div>
+            <input
+              className={styles.commentInput}
+              placeholder={`Comment on ${currentNode.san}`}
+              defaultValue={currentNode.comment ?? ''}
+              // Keyed by path so switching moves reloads the field rather than
+              // carrying the previous move's comment across.
+              key={path.join('.')}
+              aria-label="Move comment"
+              data-testid="chess-comment-input"
+              onBlur={event => applyComment(event.target.value)}
+              onKeyDown={event => {
+                if (event.key === 'Enter') event.currentTarget.blur();
+              }}
+            />
+            <div className={styles.nagRow}>
+              {(path.at(-1) ?? 0) > 0 && (
+                <button
+                  className={styles.controlButton}
+                  onClick={promote}
+                  data-testid="chess-promote"
+                >
+                  Promote to main line
+                </button>
+              )}
+              <button
+                className={clsx(styles.controlButton, styles.dangerButton)}
+                onClick={deleteHere}
+                data-testid="chess-delete-from"
+              >
+                Delete from here
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {editing && (
+        <PgnEditor
+          value={draftValue}
+          error={draftError}
+          readonly={readonly}
+          canCancel
+          onChange={setDraft}
+          onSave={saveDraft}
+          onCancel={() => setDraft(null)}
+        />
+      )}
     </div>
   );
 };

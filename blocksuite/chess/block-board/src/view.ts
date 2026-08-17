@@ -7,6 +7,7 @@ import { BlockViewExtension, FlavourExtension } from '@blocksuite/std';
 import { literal } from 'lit/static-html.js';
 
 import { chessBoardSlashMenuConfig } from './configs/slash-menu.js';
+import { createChessBoardToolbarExtension } from './configs/toolbar.js';
 import { effects } from './effects.js';
 
 export class ChessBoardViewExtension extends ViewExtensionProvider {
@@ -28,6 +29,7 @@ export class ChessBoardViewExtension extends ViewExtensionProvider {
           ? literal`affine-edgeless-chess-board`
           : literal`affine-chess-board`
       ),
+      ...createChessBoardToolbarExtension('affine:chess-board'),
     ]);
 
     // A slash menu only exists where there is text to type into.

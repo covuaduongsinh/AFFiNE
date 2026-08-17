@@ -129,10 +129,133 @@ export const variation = style({
 export const empty = style({
   color: cssVarV2('text/placeholder'),
   fontStyle: 'italic',
+  lineHeight: 1.6,
 });
 
 export const error = style({
-  padding: 16,
   color: cssVarV2('status/error'),
+  fontSize: cssVar('fontXs'),
+});
+
+/**
+ * The PGN editor spans the whole block.
+ *
+ * The container wraps, so a 100% basis puts this on its own row underneath the
+ * board and the move list — PGN carries multi-line headers and needs the width.
+ */
+export const editor = style({
+  flexBasis: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+  paddingTop: 12,
+  borderTop: `1px solid ${cssVarV2('layer/insideBorder/border')}`,
+});
+
+export const editorTextarea = style({
+  width: '100%',
+  minHeight: 140,
+  resize: 'vertical',
+  padding: 8,
+  borderRadius: 4,
+  border: `1px solid ${cssVarV2('layer/insideBorder/border')}`,
+  backgroundColor: cssVarV2('layer/background/primary'),
+  color: cssVarV2('text/primary'),
+  fontFamily: cssVar('fontCodeFamily'),
+  fontSize: cssVar('fontXs'),
+  lineHeight: 1.6,
+  selectors: {
+    '&:focus': {
+      outline: 'none',
+      borderColor: cssVarV2('layer/insideBorder/primaryBorder'),
+    },
+  },
+});
+
+export const editorFooter = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  flexWrap: 'wrap',
+});
+
+export const editorStatus = style({
+  flex: 1,
+  minWidth: 160,
+  fontSize: cssVar('fontXs'),
+  color: cssVarV2('text/secondary'),
+});
+
+export const primaryButton = style({
+  border: 'none',
+  borderRadius: 4,
+  height: 28,
+  padding: '0 12px',
+  cursor: 'pointer',
   fontSize: cssVar('fontSm'),
+  backgroundColor: cssVarV2('button/primary'),
+  color: cssVarV2('button/pureWhiteText'),
+  selectors: {
+    '&:disabled': {
+      opacity: 0.4,
+      cursor: 'default',
+    },
+  },
+});
+
+/** Annotation tools for whichever move is currently selected. */
+export const annotations = style({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 6,
+  paddingTop: 8,
+  borderTop: `1px solid ${cssVarV2('layer/insideBorder/border')}`,
+});
+
+export const nagRow = style({
+  display: 'flex',
+  gap: 4,
+  flexWrap: 'wrap',
+  alignItems: 'center',
+});
+
+export const nagButton = style({
+  minWidth: 30,
+  height: 26,
+  borderRadius: 4,
+  cursor: 'pointer',
+  fontSize: cssVar('fontSm'),
+  fontWeight: 600,
+  border: `1px solid ${cssVarV2('layer/insideBorder/border')}`,
+  background: 'transparent',
+  color: cssVarV2('text/primary'),
+  selectors: {
+    '&:hover': { backgroundColor: cssVarV2('layer/background/hoverOverlay') },
+  },
+});
+
+export const nagButtonActive = style({
+  backgroundColor: cssVarV2('layer/background/hoverOverlay'),
+  borderColor: cssVarV2('layer/insideBorder/primaryBorder'),
+});
+
+export const commentInput = style({
+  width: '100%',
+  height: 28,
+  padding: '0 8px',
+  borderRadius: 4,
+  border: `1px solid ${cssVarV2('layer/insideBorder/border')}`,
+  backgroundColor: cssVarV2('layer/background/primary'),
+  color: cssVarV2('text/primary'),
+  fontSize: cssVar('fontXs'),
+  selectors: {
+    '&:focus': {
+      outline: 'none',
+      borderColor: cssVarV2('layer/insideBorder/primaryBorder'),
+    },
+  },
+});
+
+export const dangerButton = style({
+  color: cssVarV2('status/error'),
 });
