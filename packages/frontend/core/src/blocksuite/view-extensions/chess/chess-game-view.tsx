@@ -30,6 +30,7 @@ import clsx from 'clsx';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import * as styles from './chess-game-view.css';
+import { chessFieldStats } from './field-shield';
 
 export interface ChessGameViewProps {
   model: ChessGameBlockModel;
@@ -252,7 +253,7 @@ interface PgnEditorProps {
  * not work from a browser tab still running last hour's bundle. With the tag
  * on screen, a screenshot answers that on its own.
  */
-const CHESS_BUILD = 'v14';
+const CHESS_BUILD = 'v15';
 
 const PgnEditor = ({
   value,
@@ -277,6 +278,23 @@ const PgnEditor = ({
    * confirmed working on the user's machine.
    */
   const [beat, setBeat] = useState({ caret: false, edits: 0 });
+  const [shield, setShield] = useState({ keys: 0, blocked: 0, healed: 0 });
+
+  // The shield's counters live in a plain module object — nothing re-renders
+  // this component when they move, and precisely when keys are being killed
+  // nothing else re-renders it either. Poll; bail out when unchanged.
+  useEffect(() => {
+    const id = setInterval(() => {
+      setShield(prev =>
+        prev.keys === chessFieldStats.keys &&
+        prev.blocked === chessFieldStats.blocked &&
+        prev.healed === chessFieldStats.healed
+          ? prev
+          : { ...chessFieldStats }
+      );
+    }, 500);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const el = textarea.current;
@@ -336,8 +354,27 @@ const PgnEditor = ({
       <div className={styles.editorFooter}>
         <span className={clsx(styles.editorStatus, error && styles.error)}>
           {error ?? 'Paste a game, or edit the moves and annotations directly.'}
-          {` — ${CHESS_BUILD} · ${beat.caret ? 'con trỏ: trong ô' : 'con trỏ: ngoài ô'} · phím vào ô: ${beat.edits}`}
+          {` — ${CHESS_BUILD} · ${beat.caret ? 'con trỏ: trong ô' : 'con trỏ: ngoài ô'} · phím: ${shield.keys} (bị chặn: ${shield.blocked}, đã cứu: ${shield.healed}) · vào ô: ${beat.edits}`}
         </span>
+        <button
+          className={styles.controlButton}
+          disabled={readonly}
+          data-testid="chess-pgn-paste-btn"
+          title="Đọc PGN từ clipboard — không cần bàn phím"
+          onClick={() => {
+            // Reads the clipboard on click: no keyboard event is involved, so
+            // this works even where keystrokes are being killed outside the
+            // app. Replaces the whole draft — a copied game is a whole game.
+            navigator.clipboard
+              .readText()
+              .then(text => {
+                if (text.trim()) onChange(text);
+              })
+              .catch(() => {});
+          }}
+        >
+          Dán PGN
+        </button>
         {canCancel && (
           <button className={styles.controlButton} onClick={onCancel}>
             Cancel
