@@ -16,6 +16,7 @@ import { z } from 'zod';
 
 import { ChessBoardView } from './chess-board-view';
 import { ChessGameView } from './chess-game-view';
+import { ChessPasteWatcher } from './paste';
 
 const optionsSchema = z.object({
   enableChess: z.boolean().optional(),
@@ -63,5 +64,10 @@ export class ChessViewExtension extends ViewExtensionProvider<ChessViewOptions> 
           html`${reactToLit(<ChessGameView model={model} />, false)}`,
       })
     );
+
+    // Pasting only makes sense where the document is editable.
+    if (!this.isPreview(context.scope)) {
+      context.register(ChessPasteWatcher);
+    }
   }
 }
