@@ -1,5 +1,6 @@
 import { CaptionedBlockComponent } from '@blocksuite/affine-components/caption';
 import { BlockSelection } from '@blocksuite/std';
+import { RANGE_SYNC_EXCLUDE_ATTR } from '@blocksuite/std/inline';
 import { css, html } from 'lit';
 
 import type { ChessBoardBlockModel } from './model.js';
@@ -62,6 +63,43 @@ export class ChessBoardBlockComponent extends CaptionedBlockComponent<ChessBoard
       .some(selection => selection.blockId === this.model.id);
   }
 
+  /**
+   * Opt out of the editor's native-selection syncing, the way the database
+   * block does.
+   *
+   * `RangeBinding` watches `selectionchange` on the document and treats any
+   * selection without an inline-text endpoint as stray: it removes the range
+   * and ends up calling `document.activeElement.blur()`. A caret inside this
+   * block's FEN box is exactly such a selection, so without this attribute the
+   * editor takes the caret back moments after a click grants it.
+   */
+  override connectedCallback() {
+    super.connectedCallback();
+    this.setAttribute(RANGE_SYNC_EXCLUDE_ATTR, 'true');
+  }
+
+  /**
+   * Hand focus to a field inside the block when the user clicks into one.
+   *
+   * While a block selection is live the editor host keeps pulling focus back
+   * to itself, so a field inside the block would lose its caret. Selecting the
+   * block and then editing inside it is the ordinary way to work here, so the
+   * selection has to yield rather than fight the field.
+   */
+  private readonly _onFieldFocus = (event: FocusEvent) => {
+    const target = event.target;
+    if (
+      !(
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLInputElement
+      )
+    ) {
+      return;
+    }
+    if (this.selection.filter(BlockSelection).length === 0) return;
+    this.selection.clear(['block']);
+  };
+
   override renderBlock() {
     const renderer = this.std.getOptional(ChessBoardRendererIdentifier);
 
@@ -70,6 +108,7 @@ export class ChessBoardBlockComponent extends CaptionedBlockComponent<ChessBoard
         contenteditable="false"
         class="chess-board-container"
         data-selected=${this.isBlockSelected ? 'true' : 'false'}
+        @focusin=${this._onFieldFocus}
       >
         ${
           renderer

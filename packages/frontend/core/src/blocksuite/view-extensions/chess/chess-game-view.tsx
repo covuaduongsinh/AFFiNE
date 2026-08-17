@@ -30,7 +30,7 @@ import clsx from 'clsx';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import * as styles from './chess-game-view.css';
-import { chessFieldStats } from './field-shield';
+import { guardFieldPointer, nestedFieldEvents } from './field-guard';
 
 export interface ChessGameViewProps {
   model: ChessGameBlockModel;
@@ -184,49 +184,6 @@ const MoveList = ({
   );
 };
 
-/**
- * BlockSuite listens for pointer and keyboard events at the document level and
- * acts on them before a field nested inside a block ever sees them.
- *
- * Paste is the one that actually bites: the editor's clipboard controller
- * listens on `document`, calls `preventDefault()` and pastes into the document
- * instead, so pasting a PGN into this box did nothing at all — the box kept the
- * old text while the game silently changed underneath. Typing worked, which is
- * what made the report ("chưa sửa được pgn") look like a focus problem.
- *
- * This is the same set the built-in caption editor stops
- * (`blocksuite/affine/components/src/caption/block-caption.ts`).
- */
-const stopPropagation = (event: { stopPropagation: () => void }) =>
-  event.stopPropagation();
-
-/**
- * Take the caret by hand when the click did not grant it.
- *
- * A `mousedown` listener upstream that calls `preventDefault()` stops the
- * browser moving focus but still lets `click` through. That leaves a field
- * which looks alive — every button beside it responds — yet has no caret and
- * swallows both typing and paste. Asking for focus outright is immune to it.
- */
-const claimFocus = (event: React.MouseEvent<HTMLElement>) => {
-  event.stopPropagation();
-  const field = event.currentTarget;
-  if (document.activeElement !== field) field.focus();
-};
-
-const nestedFieldEvents = {
-  onPointerDown: stopPropagation,
-  onPointerUp: stopPropagation,
-  onClick: claimFocus,
-  onDoubleClick: stopPropagation,
-  onMouseDown: stopPropagation,
-  onCut: stopPropagation,
-  onCopy: stopPropagation,
-  onPaste: stopPropagation,
-  onKeyDown: stopPropagation,
-  onKeyUp: stopPropagation,
-} as const;
-
 interface PgnEditorProps {
   value: string;
   error: string | null;
@@ -246,15 +203,6 @@ interface PgnEditorProps {
   autoFocus: boolean;
 }
 
-/**
- * Build marker shown in the status line, bumped with each editing fix.
- *
- * Three rounds of "still broken" reports could not distinguish a fix that does
- * not work from a browser tab still running last hour's bundle. With the tag
- * on screen, a screenshot answers that on its own.
- */
-const CHESS_BUILD = 'v15';
-
 const PgnEditor = ({
   value,
   error,
@@ -265,70 +213,7 @@ const PgnEditor = ({
   onCancel,
   autoFocus,
 }: PgnEditorProps) => {
-  const textarea = useRef<HTMLTextAreaElement>(null);
-
-  /**
-   * Live proof of what is reaching the box, shown in the status line.
-   *
-   * The reported symptom — no caret, keystrokes vanishing — cannot be told
-   * apart from a stale bundle or an outside interceptor (an antivirus's
-   * "secure input", an extension) in a screenshot of a dead box. These two
-   * numbers make the next screenshot diagnostic: whether the box holds focus,
-   * and how many edits actually arrived. Temporary; remove once editing is
-   * confirmed working on the user's machine.
-   */
-  const [beat, setBeat] = useState({ caret: false, edits: 0 });
-  const [shield, setShield] = useState({ keys: 0, blocked: 0, healed: 0 });
-
-  // The shield's counters live in a plain module object — nothing re-renders
-  // this component when they move, and precisely when keys are being killed
-  // nothing else re-renders it either. Poll; bail out when unchanged.
-  useEffect(() => {
-    const id = setInterval(() => {
-      setShield(prev =>
-        prev.keys === chessFieldStats.keys &&
-        prev.blocked === chessFieldStats.blocked &&
-        prev.healed === chessFieldStats.healed
-          ? prev
-          : { ...chessFieldStats }
-      );
-    }, 500);
-    return () => clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    const el = textarea.current;
-    if (!el) return;
-
-    // The state update MUST leave the event dispatch it was born in. Microtask
-    // checkpoints run between listeners of one event, so a synchronous setState
-    // here re-renders mid-bubble: React writes the old controlled value back
-    // into the textarea and updates its value tracker, and by the time the
-    // `input` event reaches React's root it looks like nothing changed — no
-    // onChange, and the keystroke is silently reverted. The diagnostic was
-    // eating the keystrokes it existed to count.
-    let alive = true;
-    const later = (update: () => void) => {
-      setTimeout(() => {
-        if (alive) update();
-      }, 0);
-    };
-    const onInput = () =>
-      later(() => setBeat(b => ({ ...b, edits: b.edits + 1 })));
-    const onFocus = () => later(() => setBeat(b => ({ ...b, caret: true })));
-    const onBlur = () => later(() => setBeat(b => ({ ...b, caret: false })));
-    el.addEventListener('input', onInput);
-    el.addEventListener('focus', onFocus);
-    el.addEventListener('blur', onBlur);
-    // Autofocus may already have fired before these listeners attached.
-    if (document.activeElement === el) setBeat(b => ({ ...b, caret: true }));
-    return () => {
-      alive = false;
-      el.removeEventListener('input', onInput);
-      el.removeEventListener('focus', onFocus);
-      el.removeEventListener('blur', onBlur);
-    };
-  }, []);
+  const textarea = useRef<HTMLTextAreaElement | null>(null);
 
   // Pressing the edit button means wanting to type, so do not make the user
   // click again — and this way the caret never depends on a click at all.
@@ -339,14 +224,16 @@ const PgnEditor = ({
   return (
     <div className={styles.editor}>
       <textarea
-        ref={textarea}
+        ref={element => {
+          textarea.current = element;
+          guardFieldPointer(element);
+        }}
         className={styles.editorTextarea}
         value={value}
         readOnly={readonly}
         spellCheck={false}
         aria-label="PGN source"
         data-testid="chess-pgn-editor"
-        data-chess-field="true"
         placeholder={'[Event "..."]\n\n1. e4 e5 2. Nf3 *'}
         onChange={event => onChange(event.target.value)}
         {...nestedFieldEvents}
@@ -354,7 +241,6 @@ const PgnEditor = ({
       <div className={styles.editorFooter}>
         <span className={clsx(styles.editorStatus, error && styles.error)}>
           {error ?? 'Paste a game, or edit the moves and annotations directly.'}
-          {` — ${CHESS_BUILD} · ${beat.caret ? 'con trỏ: trong ô' : 'con trỏ: ngoài ô'} · phím: ${shield.keys} (bị chặn: ${shield.blocked}, đã cứu: ${shield.healed}) · vào ô: ${beat.edits}`}
         </span>
         <button
           className={styles.controlButton}
@@ -792,6 +678,7 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
               ))}
             </div>
             <input
+              ref={guardFieldPointer}
               className={styles.commentInput}
               placeholder={`Comment on ${currentNode.san}`}
               defaultValue={currentNode.comment ?? ''}
@@ -800,7 +687,6 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
               key={path.join('.')}
               aria-label="Move comment"
               data-testid="chess-comment-input"
-              data-chess-field="true"
               onBlur={event => applyComment(event.target.value)}
               {...nestedFieldEvents}
               onKeyDown={event => {

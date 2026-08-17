@@ -1,10 +1,17 @@
 import {
   ActionPlacement,
   type ToolbarAction,
+  type ToolbarActionGenerator,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
 } from '@blocksuite/affine-shared/services';
-import { CopyIcon, DeleteIcon, FlipDirectionIcon } from '@blocksuite/icons/lit';
+import {
+  CopyIcon,
+  DeleteIcon,
+  FlipDirectionIcon,
+  LockIcon,
+  UnlockIcon,
+} from '@blocksuite/icons/lit';
 import { BlockFlavourIdentifier } from '@blocksuite/std';
 import type { ExtensionType } from '@blocksuite/store';
 
@@ -43,10 +50,42 @@ const flipAction = {
   },
 } satisfies ToolbarAction;
 
+/**
+ * Turns piece movement on or off — what separates a board from a diagram.
+ *
+ * Generated so the icon and tooltip reflect the current state. Boards written
+ * before the `editable` prop existed store nothing for it and were always
+ * meant to be movable, so only an explicit false counts as locked.
+ */
+const toggleMovesAction = {
+  id: 'toggle-moves',
+  generate(ctx) {
+    const model = ctx.getCurrentModelByType(ChessBoardBlockModel);
+    if (!model) return null;
+    const movesEnabled = model.props.editable !== false;
+    return {
+      label: movesEnabled ? 'Lock moves' : 'Unlock moves',
+      tooltip: movesEnabled
+        ? 'Khóa di chuyển quân (thành thế cờ cố định)'
+        : 'Mở khóa di chuyển quân',
+      icon: movesEnabled ? UnlockIcon() : LockIcon(),
+      run(cx) {
+        const current = cx.getCurrentModelByType(ChessBoardBlockModel);
+        if (!current) return;
+        cx.store.captureSync();
+        cx.store.updateBlock(current, {
+          editable: current.props.editable === false,
+        });
+      },
+    };
+  },
+} satisfies ToolbarActionGenerator;
+
 const builtinToolbarConfig = {
   actions: [
     { id: 'a.copy-fen', actions: [copyFenAction] },
     { id: 'b.flip', actions: [flipAction] },
+    { id: 'b.toggle-moves', actions: [toggleMovesAction] },
     {
       placement: ActionPlacement.More,
       id: 'c.delete',

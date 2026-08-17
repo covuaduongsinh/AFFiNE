@@ -56,6 +56,23 @@ export function clonePosition(pos: Position): Position {
  * refuses it.
  */
 export function parseFen(fen: string): Position {
+  return parseFenImpl(fen, true);
+}
+
+/**
+ * Parse a FEN whose position may lack one or both kings.
+ *
+ * Printed chess material is full of king-less diagrams — pawn structures,
+ * material skeletons — and rendering handles them fine; only play needs kings.
+ * Everything else {@link parseFen} rejects is still rejected here, and a
+ * missing king is recorded as {@link NO_SQUARE}. Do not feed the result to
+ * move generation or check detection.
+ */
+export function parseDiagramFen(fen: string): Position {
+  return parseFenImpl(fen, false);
+}
+
+function parseFenImpl(fen: string, requireKings: boolean): Position {
   const parts = fen.trim().split(/\s+/);
   if (parts.length < 4) {
     throw new FenError(`FEN needs at least 4 fields, got ${parts.length}`);
@@ -107,7 +124,10 @@ export function parseFen(fen: string): Position {
     }
   }
 
-  if (kings[WHITE] === NO_SQUARE || kings[BLACK] === NO_SQUARE) {
+  if (
+    requireKings &&
+    (kings[WHITE] === NO_SQUARE || kings[BLACK] === NO_SQUARE)
+  ) {
     throw new FenError('FEN must contain both kings');
   }
 

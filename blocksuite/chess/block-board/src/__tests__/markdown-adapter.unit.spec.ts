@@ -36,6 +36,14 @@ describe('chess board markdown adapter', () => {
     ).toBe(true);
   });
 
+  it('matches a fenced block tagged chessboard', () => {
+    expect(
+      chessBoardMarkdownAdapterMatcher.toMatch(
+        codeNode('chessboard', `fen: ${START_FEN}`)
+      )
+    ).toBe(true);
+  });
+
   it('leaves other code fences alone', () => {
     expect(
       chessBoardMarkdownAdapterMatcher.toMatch(codeNode('ts', 'const a = 1;'))
@@ -54,6 +62,106 @@ describe('chess board markdown adapter', () => {
     expect(
       chessBoardMarkdownAdapterMatcher.fromMatch(blockNode('affine:paragraph'))
     ).toBe(false);
+  });
+});
+
+/**
+ * Runs an adapter direction against a stub walker and returns every node it
+ * opened — enough to assert imports and exports without standing up a doc.
+ */
+function runEnter(
+  enter: ((o: never, context: never) => void) | undefined,
+  node: unknown
+) {
+  const opened: Record<string, unknown>[] = [];
+  const walkerContext = {
+    openNode(opening: Record<string, unknown>) {
+      opened.push(opening);
+      return walkerContext;
+    },
+    closeNode() {
+      return walkerContext;
+    },
+  };
+  enter?.(node as never, { walkerContext } as never);
+  return opened;
+}
+
+const KINGLESS_FEN = '8/8/4P3/8/8/8/8/8 w - - 0 1';
+
+describe('importing fenced markdown', () => {
+  const importNode = (lang: string, value: string, meta?: string | null) =>
+    runEnter(
+      chessBoardMarkdownAdapterMatcher.toBlockSnapshot.enter,
+      codeNode(lang, value, meta)
+    );
+
+  it('reads the Obsidian chessboard form with a fen: line', () => {
+    const [block] = importNode('chessboard', `fen: ${START_FEN}`);
+    expect(block).toMatchObject({
+      flavour: 'affine:chess-board',
+      props: { fen: START_FEN, orientation: 'white', editable: false },
+    });
+  });
+
+  it('reads an orientation: line from the body', () => {
+    const [block] = importNode(
+      'chessboard',
+      `fen: ${START_FEN}\norientation: black`
+    );
+    expect(block).toMatchObject({ props: { orientation: 'black' } });
+  });
+
+  it('skips option keys it does not model instead of rejecting', () => {
+    const [block] = importNode(
+      'chessboard',
+      `fen: ${START_FEN}\nannotations: G:e2->e4\npieceStyle: cburnett`
+    );
+    expect(block).toMatchObject({ props: { fen: START_FEN } });
+  });
+
+  it('still reads the bare fen fence', () => {
+    const [block] = importNode('fen', START_FEN);
+    expect(block).toMatchObject({ props: { fen: START_FEN } });
+  });
+
+  it('keeps honouring orientation carried in the fence meta', () => {
+    const [block] = importNode('fen', START_FEN, 'orientation=black');
+    expect(block).toMatchObject({ props: { orientation: 'black' } });
+  });
+
+  it('accepts a king-less diagram position', () => {
+    const [block] = importNode('chessboard', `fen: ${KINGLESS_FEN}`);
+    expect(block).toMatchObject({ props: { fen: KINGLESS_FEN } });
+  });
+
+  it('leaves fences without a readable position alone', () => {
+    expect(importNode('chessboard', 'pieceStyle: cburnett')).toHaveLength(0);
+    expect(importNode('chessboard', 'fen: not a position')).toHaveLength(0);
+    expect(importNode('fen', 'not a position')).toHaveLength(0);
+  });
+});
+
+describe('exporting to markdown', () => {
+  const exportProps = (props: Record<string, unknown>) =>
+    runEnter(chessBoardMarkdownAdapterMatcher.fromBlockSnapshot.enter, {
+      node: { flavour: 'affine:chess-board', props },
+    });
+
+  it('writes the Obsidian chessboard form', () => {
+    const [node] = exportProps({ fen: START_FEN, orientation: 'white' });
+    expect(node).toMatchObject({
+      type: 'code',
+      lang: 'chessboard',
+      value: `fen: ${START_FEN}`,
+    });
+  });
+
+  it('adds an orientation line only when flipped', () => {
+    const [node] = exportProps({ fen: START_FEN, orientation: 'black' });
+    expect(node).toMatchObject({
+      value: `fen: ${START_FEN}\norientation: black`,
+    });
   });
 });
 

@@ -1,4 +1,4 @@
-import { test } from '@affine-test/kit/playwright';
+import { ProjectRoot, test } from '@affine-test/kit/playwright';
 import { openHomePage } from '@affine-test/kit/utils/load-page';
 import {
   clickNewPageButton,
@@ -360,43 +360,6 @@ test('a variation can be promoted to the main line', async ({ page }) => {
   await expect(game.getByTestId('chess-pgn-editor')).toHaveValue(/1\. e4 c5/);
 });
 
-test('typing survives an interceptor that kills keys in textareas', async ({
-  page,
-}) => {
-  // Registered before any app code loads, exactly like an extension's content
-  // script: every keydown and paste aimed at a textarea has its default
-  // cancelled. This is the machine the bug was reported from — five fixes
-  // passed on clean Chromium while that machine stayed broken.
-  await page.addInitScript(() => {
-    const kill = (event: Event) => {
-      if (event.target instanceof HTMLTextAreaElement) event.preventDefault();
-    };
-    window.addEventListener('keydown', kill, true);
-    window.addEventListener('paste', kill, true);
-  });
-
-  await newDocWithFocus(page, 'Hostile');
-  await slashInsert(page, 'Chess game', 'affine-chess-game');
-  const game = page.locator('affine-chess-game');
-
-  await game.getByTestId('chess-edit-toggle').click();
-  const editor = game.getByTestId('chess-pgn-editor');
-  await expect(editor).toBeFocused();
-
-  // Select-all without keys — the interceptor kills Ctrl+A's default too, and
-  // healing shortcuts is tested by the shield, not by this arrangement step.
-  await editor.evaluate(el => (el as HTMLTextAreaElement).select());
-  await page.keyboard.type('1. d4 d5 *', { delay: 30 });
-
-  // Every one of those keystrokes had its default cancelled; the shield must
-  // have performed the edits itself.
-  await expect(editor).toHaveValue('1. d4 d5 *');
-  await expect(game).toContainText(/đã cứu: [1-9]/);
-
-  await game.getByTestId('chess-pgn-save').click();
-  await expect(game).toContainText('d4');
-});
-
 test('the Dán PGN button reads the clipboard without the keyboard', async ({
   page,
 }) => {
@@ -438,6 +401,275 @@ test('deleting from a move can be undone', async ({ page }) => {
 
   await expect(page.locator('affine-chess-game')).toHaveCount(1);
   await expect(page.locator('affine-chess-game')).toContainText('Qxf7');
+});
+
+/** Kings are mandatory in a legal FEN, so "empty" means kings only. */
+const KINGS_ONLY_FEN = '4k3/8/8/8/8/8/8/4K3 w - - 0 1';
+
+test('the position of a board can be edited as FEN', async ({ page }) => {
+  await newDocWithFocus(page, 'Edit FEN');
+  await slashInsert(page, 'Chess board', 'affine-chess-board');
+  const board = page.locator('affine-chess-board');
+  await expect(board.locator('[data-piece]')).toHaveCount(32);
+
+  await board.getByTestId('chess-board-edit-toggle').click();
+  const editor = board.getByTestId('chess-fen-editor');
+  await expect(editor).toHaveValue(START_FEN);
+
+  // Click and type for real — the FEN box needs the same guards the PGN box
+  // did, and a locator `fill()` would sail right past their absence.
+  await editor.click();
+  await expect(editor, 'clicking the FEN box did not focus it').toBeFocused();
+  await editor.press('ControlOrMeta+a');
+  await editor.pressSequentially(KINGS_ONLY_FEN, { delay: 20 });
+  await expect(editor).toHaveValue(KINGS_ONLY_FEN);
+
+  await board.getByTestId('chess-fen-save').click();
+  await expect(board.locator('[data-piece]')).toHaveCount(2);
+});
+
+test('an unreadable FEN keeps the text and disables save', async ({ page }) => {
+  await newDocWithFocus(page, 'Broken FEN');
+  await slashInsert(page, 'Chess board', 'affine-chess-board');
+  const board = page.locator('affine-chess-board');
+
+  await board.getByTestId('chess-board-edit-toggle').click();
+  const editor = board.getByTestId('chess-fen-editor');
+  await editor.fill('not a position');
+
+  await expect(board.getByTestId('chess-fen-save')).toBeDisabled();
+  await expect(editor).toHaveValue('not a position');
+
+  await editor.fill(KINGS_ONLY_FEN);
+  await expect(board.getByTestId('chess-fen-save')).toBeEnabled();
+  await board.getByTestId('chess-fen-save').click();
+  await expect(board.locator('[data-piece]')).toHaveCount(2);
+});
+
+test('a diagram is locked until the author unlocks it', async ({ page }) => {
+  await newDocWithFocus(page, 'Locked diagram');
+  await slashInsert(page, 'Chess diagram', 'affine-chess-board');
+  const board = page.locator('affine-chess-board');
+  const square = (name: string) =>
+    board.locator(`[role="gridcell"][data-square="${name}"]`);
+  const pieceOn = (name: string) =>
+    board.locator(`[data-piece][data-square="${name}"]`);
+
+  // A diagram ignores clicks: that is what makes it a diagram.
+  await square('e2').click();
+  await square('e4').click();
+  await expect(pieceOn('e4')).toHaveCount(0);
+  await expect(pieceOn('e2')).toHaveCount(1);
+
+  // The lock control names the state, so a "board that will not move" is
+  // diagnosable at a glance — and reversible.
+  const lock = board.getByTestId('chess-board-lock-toggle');
+  await expect(lock).toHaveText('Đi quân: Tắt');
+  await lock.click();
+  await expect(lock).toHaveText('Đi quân: Bật');
+
+  await square('e2').click();
+  await square('e4').click();
+  await expect(pieceOn('e4')).toHaveCount(1);
+  await expect(pieceOn('e2')).toHaveCount(0);
+});
+
+test('the Dán FEN button reads the clipboard without the keyboard', async ({
+  page,
+}) => {
+  await newDocWithFocus(page, 'FEN clipboard');
+  await slashInsert(page, 'Chess board', 'affine-chess-board');
+  const board = page.locator('affine-chess-board');
+
+  await board.getByTestId('chess-board-edit-toggle').click();
+
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.evaluate(
+    fen => navigator.clipboard.writeText(fen),
+    KINGS_ONLY_FEN
+  );
+  await board.getByTestId('chess-fen-paste-btn').click();
+
+  await expect(board.getByTestId('chess-fen-editor')).toHaveValue(
+    KINGS_ONLY_FEN
+  );
+  await board.getByTestId('chess-fen-save').click();
+  await expect(board.locator('[data-piece]')).toHaveCount(2);
+});
+
+test('a position can be set up from an empty board with the palette', async ({
+  page,
+}) => {
+  await newDocWithFocus(page, 'Setup');
+  await slashInsert(page, 'Chess board', 'affine-chess-board');
+  const board = page.locator('affine-chess-board');
+  const square = (name: string) =>
+    board.locator(`[role="gridcell"][data-square="${name}"]`);
+
+  await board.getByTestId('chess-board-edit-toggle').click();
+
+  // Clearing leaves a king-less board — a saveable diagram in its own right
+  // (printed material is full of them), so Save stays available throughout.
+  await board.getByTestId('chess-setup-clear').click();
+  await expect(board.locator('[data-piece]')).toHaveCount(0);
+  await expect(board.getByTestId('chess-fen-save')).toBeEnabled();
+
+  await board.getByTestId('chess-setup-tool-wK').click();
+  await square('e1').click();
+  await board.getByTestId('chess-setup-tool-bK').click();
+  await square('e8').click();
+
+  await expect(board.locator('[data-piece]')).toHaveCount(2);
+  await board.getByTestId('chess-fen-save').click();
+
+  await expect(board.locator('[data-piece][data-square="e1"]')).toHaveCount(1);
+  await expect(board.locator('[data-piece][data-square="e8"]')).toHaveCount(1);
+  await expect(board.locator('[data-piece]')).toHaveCount(2);
+});
+
+test('the palette places and erases pieces on an existing position', async ({
+  page,
+}) => {
+  await newDocWithFocus(page, 'Palette');
+  await slashInsert(page, 'Chess board', 'affine-chess-board');
+  const board = page.locator('affine-chess-board');
+  const square = (name: string) =>
+    board.locator(`[role="gridcell"][data-square="${name}"]`);
+
+  await board.getByTestId('chess-board-edit-toggle').click();
+
+  // Nothing stops a second queen: setup mode has no legality, only Save does.
+  await board.getByTestId('chess-setup-tool-wQ').click();
+  await square('e4').click();
+  await expect(board.locator('[data-piece]')).toHaveCount(33);
+  await expect(board.locator('[data-piece][data-square="e4"]')).toHaveCount(1);
+
+  await board.getByTestId('chess-setup-tool-erase').click();
+  await square('a2').click();
+  await square('e4').click();
+  await expect(board.locator('[data-piece]')).toHaveCount(31);
+
+  await board.getByTestId('chess-fen-save').click();
+  await expect(board.locator('[data-piece]')).toHaveCount(31);
+  await expect(board.locator('[data-piece][data-square="a2"]')).toHaveCount(0);
+});
+
+test('side to move and castling rights are edited from the setup row', async ({
+  page,
+}) => {
+  await newDocWithFocus(page, 'Turn and castling');
+  await slashInsert(page, 'Chess board', 'affine-chess-board');
+  const board = page.locator('affine-chess-board');
+
+  await board.getByTestId('chess-board-edit-toggle').click();
+
+  await board.getByTestId('chess-setup-turn-b').click();
+  await board.getByTestId('chess-setup-castle-K').uncheck();
+  await board.getByTestId('chess-setup-castle-Q').uncheck();
+  await board.getByTestId('chess-setup-castle-k').uncheck();
+  await board.getByTestId('chess-setup-castle-q').uncheck();
+
+  // The FEN box is the same state the tools edit, so it shows the result.
+  await expect(board.getByTestId('chess-fen-editor')).toHaveValue(/ b - /);
+
+  await board.getByTestId('chess-fen-save').click();
+  await board.getByTestId('chess-board-edit-toggle').click();
+  await expect(board.getByTestId('chess-fen-editor')).toHaveValue(/ b - /);
+});
+
+test('pasting a FEN onto a board replaces its position in place', async ({
+  page,
+}) => {
+  await newDocWithFocus(page, 'Paste over board');
+  await slashInsert(page, 'Chess board', 'affine-chess-board');
+  const board = page.locator('affine-chess-board');
+  await expect(board.locator('[data-piece]')).toHaveCount(32);
+
+  // Click the board, then paste — same gesture the PGN-onto-game test uses.
+  // The click focuses the board's container (tabIndex), which is how the
+  // paste watcher attributes the FEN to this specific board.
+  await board.locator('[role="grid"]').first().click();
+  await page.evaluate(
+    fen => navigator.clipboard.writeText(fen),
+    KINGS_ONLY_FEN
+  );
+  await page.keyboard.press('ControlOrMeta+v');
+
+  await expect(page.locator('affine-chess-board')).toHaveCount(1);
+  await expect(board.locator('[data-piece]')).toHaveCount(2);
+});
+
+test('markdown with a chessboard fence pastes as a board, not a code block', async ({
+  page,
+}) => {
+  await newDocWithFocus(page, 'Obsidian import');
+  const markdown = [
+    'Thế cờ từ Obsidian:',
+    '',
+    '```chessboard',
+    `fen: ${KINGS_ONLY_FEN}`,
+    '```',
+    '',
+    'Hết ví dụ.',
+  ].join('\n');
+  await page.evaluate(text => navigator.clipboard.writeText(text), markdown);
+  await page.keyboard.press('ControlOrMeta+v');
+
+  await page.waitForSelector('affine-chess-board', { timeout: 30000 });
+  await expect(page.locator('affine-chess-board [data-piece]')).toHaveCount(2);
+  // The walker runs every matching adapter, so without the code-block
+  // exclusion this fence would ALSO import as a duplicate affine:code block.
+  await expect(page.locator('affine-code')).toHaveCount(0);
+  await expect(page.locator('affine-note')).toContainText('Hết ví dụ.');
+});
+
+test('a king-less diagram fence pastes and renders', async ({ page }) => {
+  await newDocWithFocus(page, 'Kingless diagram');
+  const markdown = [
+    '```chessboard',
+    'fen: 8/8/4P3/8/8/8/8/8 w - - 0 1',
+    'orientation: black',
+    '```',
+  ].join('\n');
+  await page.evaluate(text => navigator.clipboard.writeText(text), markdown);
+  await page.keyboard.press('ControlOrMeta+v');
+
+  await page.waitForSelector('affine-chess-board', { timeout: 30000 });
+  await expect(page.locator('affine-chess-board [data-piece]')).toHaveCount(1);
+  await expect(page.locator('affine-code')).toHaveCount(0);
+});
+
+test('importing a markdown file turns its chess fences into blocks', async ({
+  page,
+}) => {
+  await openHomePage(page);
+  await waitForEditorLoad(page);
+
+  await page.getByTestId('slider-bar-import-button').click();
+  await expect(page.getByTestId('import-dialog')).toBeVisible();
+
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByTestId('editor-option-menu-import-markdown-files').click();
+  await (
+    await chooser
+  ).setFiles(ProjectRoot.join('tests', 'fixtures', 'chess-demo.md').value);
+
+  // The success screen's Complete button closes the dialog and opens the doc.
+  await page
+    .getByRole('button', { name: 'Complete' })
+    .click({ timeout: 60000 });
+  await page.waitForSelector('affine-chess-board', { timeout: 60000 });
+
+  // The import path validates against its own schema, not the open-doc store —
+  // before the chess schemas were registered there, every chess block was
+  // silently dropped while the rest of the document imported fine.
+  await expect(page.locator('affine-chess-board')).toHaveCount(4);
+  await expect(page.locator('affine-chess-game')).toHaveCount(2);
+  // Every fence in the fixture is a chess fence — none may stay a code block.
+  await expect(page.locator('affine-code')).toHaveCount(0);
+  await expect(page.locator('affine-chess-game').first()).toContainText(
+    'Anderssen'
+  );
 });
 
 test('the example game replays through its move list', async ({ page }) => {

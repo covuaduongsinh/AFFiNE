@@ -21,6 +21,7 @@ export {
   FenError,
   findPieces,
   occupiedSquares,
+  parseDiagramFen,
   parseFen,
   START_FEN,
   startPosition,
@@ -68,6 +69,7 @@ export {
   SanError,
   sanToMove,
 } from './san.js';
+export { type FenParts, readPlacement, writeFen } from './setup.js';
 export {
   algebraicToSquare,
   charToType,
