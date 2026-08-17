@@ -28,6 +28,9 @@ export const SurfaceBlockSchema = defineBlockSchema({
       'affine:attachment',
       'affine:embed-*',
       'affine:edgeless-text',
+      // A board or a game standing on its own on the canvas — the coach's
+      // demo board, with the pen and connector tools usable over the top.
+      'affine:chess-*',
     ],
   },
   transformer: transformerConfigs =>
