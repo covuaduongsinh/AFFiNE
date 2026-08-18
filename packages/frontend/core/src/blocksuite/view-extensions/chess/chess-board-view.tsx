@@ -6,7 +6,11 @@ import {
   type SquareName,
 } from '@affine/component/ui/chess';
 import { useSignalValue } from '@affine/core/modules/doc-info/utils';
-import type { ChessBoardBlockModel } from '@blocksuite/chess-block-board';
+import {
+  ANNOTATION_COLORS,
+  type AnnotationColorKey,
+  type ChessBoardBlockModel,
+} from '@blocksuite/chess-block-board';
 import {
   algebraicToSquare,
   applyMove,
@@ -24,7 +28,7 @@ import {
   writeFen,
 } from '@blocksuite/chess-core';
 import clsx from 'clsx';
-import { useCallback, useMemo, useState } from 'react';
+import { type CSSProperties, useCallback, useMemo, useState } from 'react';
 
 import * as styles from './chess-board-view.css';
 import * as gameStyles from './chess-game-view.css';
@@ -56,6 +60,21 @@ const pieceTitle = (letter: PieceLetter) => {
 
 const pieceTestId = (letter: PieceLetter) =>
   `chess-setup-tool-${letter === letter.toUpperCase() ? 'w' : 'b'}${letter.toUpperCase()}`;
+
+/**
+ * The colours a lesson is drawn in.
+ *
+ * These are the four the Obsidian plugin understands, in its own values, so a
+ * board annotated here looks the same in both apps and survives the trip out
+ * as `annotations:` tokens. Anything else would be dropped to a default on
+ * export, which is why there is no free colour picker here.
+ */
+const ANNOTATION_CHOICES = [
+  { key: 'y', label: 'Vàng' },
+  { key: 'g', label: 'Xanh lá' },
+  { key: 'b', label: 'Xanh dương' },
+  { key: 'r', label: 'Đỏ' },
+] as const satisfies readonly { key: AnnotationColorKey; label: string }[];
 
 const CASTLE_RIGHTS = [
   { right: 'K', label: 'Trắng O-O' },
@@ -91,6 +110,9 @@ export const ChessBoardView = ({ model }: ChessBoardViewProps) => {
   /** `null` when the position editor is closed; the draft FEN when open. */
   const [draft, setDraft] = useState<string | null>(null);
   const [tool, setTool] = useState<SetupTool>('hand');
+  /** Whether clicks and right-drags draw annotations instead of playing. */
+  const [annotating, setAnnotating] = useState(false);
+  const [inkColor, setInkColor] = useState<AnnotationColorKey>('y');
 
   const readonly = model.store.readonly;
   /**
@@ -149,9 +171,14 @@ export const ChessBoardView = ({ model }: ChessBoardViewProps) => {
     [model, position, readonly]
   );
 
+  /**
+   * Right-drag toggles an arrow; drawing over one in a different colour
+   * recolours it rather than making the author erase and redraw.
+   */
   const handleArrowDraw = useCallback(
     (arrow: ChessArrow) => {
       if (readonly) return;
+      const color = ANNOTATION_COLORS[inkColor];
       const current = model.props.arrows ?? [];
       const existing = current.findIndex(
         item => item.from === arrow.from && item.to === arrow.to
@@ -160,15 +187,56 @@ export const ChessBoardView = ({ model }: ChessBoardViewProps) => {
       model.store.updateBlock(model, {
         arrows:
           existing === -1
-            ? [...current, { from: arrow.from, to: arrow.to }]
-            : current.filter((_, index) => index !== existing),
+            ? [...current, { from: arrow.from, to: arrow.to, color }]
+            : current[existing].color === color
+              ? current.filter((_, index) => index !== existing)
+              : current.map((item, index) =>
+                  index === existing ? { ...item, color } : item
+                ),
       });
     },
-    [model, readonly]
+    [inkColor, model, readonly]
   );
+
+  /** Clicking a square while annotating tints it, in the same three states. */
+  const handleHighlightToggle = useCallback(
+    (square: SquareName) => {
+      if (readonly) return;
+      const color = ANNOTATION_COLORS[inkColor];
+      const current = model.props.highlights ?? [];
+      const existing = current.findIndex(item => item.square === square);
+      model.store.captureSync();
+      model.store.updateBlock(model, {
+        highlights:
+          existing === -1
+            ? [...current, { square, color }]
+            : current[existing].color === color
+              ? current.filter((_, index) => index !== existing)
+              : current.map((item, index) =>
+                  index === existing ? { ...item, color } : item
+                ),
+      });
+    },
+    [inkColor, model, readonly]
+  );
+
+  const clearAnnotations = useCallback(() => {
+    if (readonly) return;
+    model.store.captureSync();
+    model.store.updateBlock(model, { arrows: [], highlights: [] });
+  }, [model, readonly]);
+
+  const toggleAnnotating = useCallback(() => {
+    setAnnotating(current => !current);
+    // A piece picked up before switching modes would otherwise stay lit with
+    // no way to put it down.
+    setSelected(null);
+  }, []);
 
   const editing = draft !== null;
   const draftValue = draft ?? fen;
+  /** Annotation mode only applies to the live board, never to the draft. */
+  const annotatingNow = annotating && !editing && !readonly;
 
   /**
    * The draft FEN split into the parts the setup tools operate on. The FEN
@@ -301,15 +369,24 @@ export const ChessBoardView = ({ model }: ChessBoardViewProps) => {
       <Chessboard
         fen={editing ? draftValue : fen}
         orientation={orientation}
-        interactive={editing ? !readonly : interactive}
-        selected={editing ? null : selected}
+        // Annotating freezes the pieces: one click cannot both tint a square
+        // and pick up whatever stands on it.
+        interactive={editing ? !readonly : annotatingNow ? false : interactive}
+        annotatable={annotatingNow}
+        selected={editing || annotatingNow ? null : selected}
         onSelect={editing ? noop : setSelected}
-        legalDestinations={editing ? [] : destinations}
+        legalDestinations={editing || annotatingNow ? [] : destinations}
         check={editing ? undefined : checkSquare}
         arrows={arrows}
         highlights={highlights}
         onMove={editing ? handleSetupMove : handleMove}
-        onSquareClick={editing ? handleSetupSquare : undefined}
+        onSquareClick={
+          editing
+            ? handleSetupSquare
+            : annotatingNow
+              ? handleHighlightToggle
+              : undefined
+        }
         onArrowDraw={handleArrowDraw}
       />
       {/* Author-only controls; hidden on the whiteboard, where the block fills
@@ -337,6 +414,51 @@ export const ChessBoardView = ({ model }: ChessBoardViewProps) => {
             data-testid="chess-board-lock-toggle"
           >
             {movesEnabled ? 'Đi quân: Bật' : 'Đi quân: Tắt'}
+          </button>
+          <button
+            className={clsx(
+              gameStyles.controlButton,
+              annotating && gameStyles.currentMove
+            )}
+            onClick={toggleAnnotating}
+            title="Tô ô bằng cách bấm, vẽ mũi tên bằng cách kéo chuột phải"
+            data-testid="chess-annotate-toggle"
+          >
+            {annotating ? 'Chú thích: Bật' : 'Chú thích: Tắt'}
+          </button>
+        </div>
+      )}
+      {/* The colours are the four the Obsidian plugin can name, so a lesson
+          drawn here goes back out intact — see obsidian-fence.ts. */}
+      {!readonly && !editing && annotating && (
+        <div
+          className={clsx(styles.setupRow, styles.belowBoard)}
+          data-chess-board-controls="true"
+        >
+          {ANNOTATION_CHOICES.map(({ key, label }) => (
+            <button
+              key={key}
+              className={clsx(
+                gameStyles.controlButton,
+                styles.colorSwatch,
+                inkColor === key && gameStyles.currentMove
+              )}
+              style={
+                { '--chess-swatch': ANNOTATION_COLORS[key] } as CSSProperties
+              }
+              onClick={() => setInkColor(key)}
+              title={label}
+              aria-label={label}
+              data-testid={`chess-annotate-color-${key}`}
+            />
+          ))}
+          <button
+            className={gameStyles.controlButton}
+            onClick={clearAnnotations}
+            title="Xoá mọi mũi tên và ô đã tô trên bàn cờ này"
+            data-testid="chess-annotate-clear"
+          >
+            Xoá chú thích
           </button>
         </div>
       )}

@@ -67,6 +67,27 @@ export const setupRow = style({
   color: cssVarV2('text/secondary'),
 });
 
+/**
+ * A colour swatch paints itself, so it carries no label — its accessible name
+ * comes from `title`/`aria-label` on the button.
+ */
+export const colorSwatch = style({
+  minWidth: 24,
+  width: 24,
+  padding: 0,
+  selectors: {
+    '&::after': {
+      content: '""',
+      display: 'block',
+      width: 14,
+      height: 14,
+      margin: '0 auto',
+      borderRadius: 3,
+      backgroundColor: 'var(--chess-swatch)',
+    },
+  },
+});
+
 export const castleLabel = style({
   display: 'inline-flex',
   alignItems: 'center',

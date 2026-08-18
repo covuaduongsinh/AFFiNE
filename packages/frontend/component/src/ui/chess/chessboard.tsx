@@ -33,6 +33,14 @@ export interface ChessboardProps {
   orientation?: BoardOrientation;
   /** Enables selecting, dragging and the right-drag arrow gesture. */
   interactive?: boolean;
+  /**
+   * Enables annotating without enabling play: squares still report clicks and
+   * a right-drag still draws an arrow, but no piece may be selected or moved.
+   *
+   * A fixed diagram is exactly the board a lesson is drawn on, so annotation
+   * cannot be tied to `interactive` — that is the one board where it is off.
+   */
+  annotatable?: boolean;
   coordinates?: boolean;
   /** Squares of the move just played, tinted so the move is visible at a glance. */
   lastMove?: { from: SquareName; to: SquareName };
@@ -109,6 +117,7 @@ export const Chessboard = ({
   fen,
   orientation = 'white',
   interactive = false,
+  annotatable = false,
   coordinates = true,
   lastMove,
   check,
@@ -173,7 +182,7 @@ export const Chessboard = ({
 
   const handlePointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (!interactive) return;
+      if (!interactive && !annotatable) return;
       const square = squareAtPoint(event.clientX, event.clientY);
       if (!square) return;
 
@@ -185,6 +194,10 @@ export const Chessboard = ({
       if (event.button !== 0) return;
 
       onSquareClick?.(square);
+
+      // Annotating a board leaves the position alone: the click has already
+      // been reported, and nothing below it may pick a piece up.
+      if (!interactive) return;
 
       // Clicking a marked destination completes a click-then-click move.
       if (
@@ -207,6 +220,7 @@ export const Chessboard = ({
       setDrag({ from: square, x: event.clientX, y: event.clientY });
     },
     [
+      annotatable,
       destinations,
       interactive,
       onMove,
@@ -303,7 +317,7 @@ export const Chessboard = ({
               className={clsx(
                 styles.square,
                 isLight ? styles.light : styles.dark,
-                interactive && styles.interactive
+                (interactive || annotatable) && styles.interactive
               )}
             >
               {(lastMove?.from === name || lastMove?.to === name) && (

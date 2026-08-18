@@ -4,10 +4,22 @@ import {
   clickNewPageButton,
   waitForEditorLoad,
 } from '@affine-test/kit/utils/page-logic';
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const SAMPLE_PGN = '1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6?? 4. Qxf7#';
+
+/**
+ * Chromium hands out clipboard access per origin, and the config's
+ * `use.permissions` does not reach this one — `navigator.permissions.query`
+ * still reports "prompt". Every paste test then dies on `writeText` in the
+ * fixture, before the app is involved at all, so grant it explicitly.
+ */
+test.beforeEach(async ({ context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
+    origin: 'http://localhost:8080',
+  });
+});
 
 /**
  * Asserts a board is genuinely on screen.
@@ -689,4 +701,126 @@ test('the example game replays through its move list', async ({ page }) => {
   await game.locator('button[title="Start"]').click();
   await expect(pieceOn('e4')).toHaveCount(0);
   await expect(pieceOn('e2')).toHaveCount(1);
+});
+
+/**
+ * Drag with the right button, the gesture that draws an arrow.
+ *
+ * Both squares must be on screen: the board reads the pointer against its own
+ * rectangle, so a release above the fold lands on no square at all and the
+ * gesture is silently dropped. That failure looks exactly like a broken
+ * feature, hence the explicit check rather than a mysterious empty board.
+ */
+async function rightDrag(page: Page, from: Locator, to: Locator) {
+  const start = await from.boundingBox();
+  const end = await to.boundingBox();
+  expect(start, 'the source square has no layout box').not.toBeNull();
+  expect(end, 'the target square has no layout box').not.toBeNull();
+  expect(start!.y, 'the source square is off screen').toBeGreaterThan(0);
+  expect(end!.y, 'the target square is off screen').toBeGreaterThan(0);
+  await page.mouse.move(
+    start!.x + start!.width / 2,
+    start!.y + start!.height / 2
+  );
+  await page.mouse.down({ button: 'right' });
+  await page.mouse.move(end!.x + end!.width / 2, end!.y + end!.height / 2);
+  await page.mouse.up({ button: 'right' });
+}
+
+test('a locked diagram can still be annotated', async ({ page }) => {
+  await newDocWithFocus(page, 'Annotated diagram');
+  // The fixed diagram is the board a lesson is drawn on, so annotating has to
+  // work on precisely the board where moving pieces does not.
+  await slashInsert(page, 'Chess diagram', 'affine-chess-board');
+  const board = page.locator('affine-chess-board');
+  const square = (name: string) =>
+    board.locator(`[role="gridcell"][data-square="${name}"]`);
+  const tint = (name: string) => square(name).locator('div').first();
+  const arrows = board.locator('svg line');
+
+  await board.getByTestId('chess-annotate-toggle').click();
+
+  await square('e4').click();
+  await expect(tint('e4')).toHaveCSS('background-color', 'rgb(241, 173, 36)');
+
+  await rightDrag(page, square('e2'), square('e4'));
+  await expect(arrows).toHaveCount(1);
+
+  // Drawing the same arrow again in the same colour takes it away.
+  await rightDrag(page, square('e2'), square('e4'));
+  await expect(arrows).toHaveCount(0);
+});
+
+test('the ink colour applies to both squares and arrows', async ({ page }) => {
+  await newDocWithFocus(page, 'Annotation colours');
+  await slashInsert(page, 'Chess diagram', 'affine-chess-board');
+  const board = page.locator('affine-chess-board');
+  const square = (name: string) =>
+    board.locator(`[role="gridcell"][data-square="${name}"]`);
+
+  await board.getByTestId('chess-annotate-toggle').click();
+  await board.getByTestId('chess-annotate-color-g').click();
+
+  await square('f5').click();
+  await expect(square('f5').locator('div').first()).toHaveCSS(
+    'background-color',
+    'rgb(179, 206, 110)'
+  );
+
+  await rightDrag(page, square('e2'), square('e4'));
+  await expect(board.locator('svg line')).toHaveAttribute('stroke', '#b3ce6e');
+
+  // Clearing takes the whole lesson off the board in one step.
+  await board.getByTestId('chess-annotate-clear').click();
+  await expect(board.locator('svg line')).toHaveCount(0);
+  await expect(square('f5').locator('div')).toHaveCount(0);
+});
+
+test('annotating leaves the pieces where they are', async ({ page }) => {
+  await newDocWithFocus(page, 'Annotation freezes play');
+  await slashInsert(page, 'Chess board', 'affine-chess-board');
+  const board = page.locator('affine-chess-board');
+  const square = (name: string) =>
+    board.locator(`[role="gridcell"][data-square="${name}"]`);
+  const pieceOn = (name: string) =>
+    board.locator(`[data-piece][data-square="${name}"]`);
+
+  await board.getByTestId('chess-annotate-toggle').click();
+
+  // One click cannot both tint a square and pick up what stands on it.
+  await square('e2').click();
+  await square('e4').click();
+  await expect(pieceOn('e2')).toHaveCount(1);
+  await expect(pieceOn('e4')).toHaveCount(0);
+
+  // Turning it off hands the board back to play.
+  await board.getByTestId('chess-annotate-toggle').click();
+  await square('e2').click();
+  await square('e4').click();
+  await expect(pieceOn('e4')).toHaveCount(1);
+});
+
+test('the exercise item lays out a diagram, a question and a hidden answer', async ({
+  page,
+}) => {
+  await newDocWithFocus(page, 'Exercise');
+  await slashInsert(page, 'Chess exercise', 'affine-chess-board');
+  await expectVisibleBoard(page, 'affine-chess-board');
+
+  const note = page.locator('affine-note');
+  await expect(note).toContainText('Câu hỏi:');
+  await expect(note).toContainText('Đáp án');
+
+  // The diagram is fixed: a student meets the position, not a toy.
+  const board = page.locator('affine-chess-board');
+  await expect(board.getByTestId('chess-board-lock-toggle')).toHaveText(
+    'Đi quân: Tắt'
+  );
+
+  // The answer starts hidden — the whole point of the layout. A collapsed
+  // heading display:none's the blocks that follow it, so the student meets
+  // the position before the solution.
+  await expect(
+    page.locator('affine-paragraph').filter({ hasText: 'Lời giải:' })
+  ).toBeHidden();
 });
