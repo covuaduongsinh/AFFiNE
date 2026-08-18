@@ -31,6 +31,8 @@ export function chessBlockProps(match: NonNullable<ChessTextMatch>) {
           arrows: [],
           highlights: [],
           editable: true,
+          extraLines: [],
+          extraAnnotations: [],
         },
       ] as const)
     : ([
@@ -109,7 +111,14 @@ export class ChessPasteWatcher extends LifeCycleWatcher {
     }
 
     if (match.kind === 'fen' && model.flavour === 'affine:chess-board') {
-      this.std.store.updateBlock(model, { fen: match.fen });
+      // Annotations belong to the position that was here, not to the new one:
+      // an arrow kept across the swap points at squares from another game, and
+      // now that annotations reach Markdown it would be written into the note.
+      this.std.store.updateBlock(model, {
+        fen: match.fen,
+        arrows: [],
+        highlights: [],
+      });
       return true;
     }
 

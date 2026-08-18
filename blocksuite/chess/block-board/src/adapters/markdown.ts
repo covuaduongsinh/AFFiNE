@@ -8,6 +8,11 @@ import { nanoid } from '@blocksuite/store';
 import type { Code } from 'mdast';
 
 import { ChessBoardBlockSchema, START_FEN } from '../model.js';
+import {
+  type FenceProps,
+  readFenceBody,
+  writeFenceBody,
+} from './obsidian-fence.js';
 
 /**
  * Boards travel through Markdown as a fenced block, in either of two shapes:
@@ -31,36 +36,6 @@ const isBoardCodeNode = (node: MarkdownAST): node is Code =>
   node.type === 'code' &&
   (node.lang === FEN_LANG || node.lang === CHESSBOARD_LANG);
 
-/**
- * Pull the FEN and options out of a fence body.
- *
- * The Obsidian plugin writes `key: value` lines and supports keys this block
- * does not model (annotations, piece styles); those are skipped rather than
- * rejected — an unknown styling option must not turn a whole diagram back into
- * a code block. A body with no such lines is the FEN itself.
- */
-function readBody(value: string): {
-  fen: string | null;
-  orientation?: 'white' | 'black';
-} {
-  let fen: string | null = null;
-  let orientation: 'white' | 'black' | undefined;
-  let sawOptionLine = false;
-  for (const line of value.split('\n')) {
-    const match = line.match(/^\s*([A-Za-z][\w-]*)\s*:\s*(.*)$/);
-    if (!match) continue;
-    sawOptionLine = true;
-    const key = match[1].toLowerCase();
-    const rest = match[2].trim();
-    if (key === 'fen') fen = rest;
-    else if (key === 'orientation') {
-      orientation = rest.toLowerCase() === 'black' ? 'black' : 'white';
-    }
-  }
-  if (!sawOptionLine) return { fen: value.trim() };
-  return { fen, orientation };
-}
-
 /** The pre-option-lines form carried `orientation=black` in the fence meta. */
 function readMetaOrientation(meta: string | null | undefined) {
   return meta?.includes('orientation=black') ? 'black' : 'white';
@@ -74,8 +49,8 @@ export const chessBoardMarkdownAdapterMatcher: BlockMarkdownAdapterMatcher = {
     enter: (o, context) => {
       if (!isBoardCodeNode(o.node)) return;
 
-      const body = readBody(o.node.value);
-      if (body.fen === null) return;
+      const body = readFenceBody(o.node.value);
+      if (body === null) return;
       const fen = body.fen;
       try {
         // Refuse to build a board from a FEN we cannot read — leaving the code
@@ -97,9 +72,11 @@ export const chessBoardMarkdownAdapterMatcher: BlockMarkdownAdapterMatcher = {
               fen,
               orientation: body.orientation ?? readMetaOrientation(o.node.meta),
               caption: '',
-              arrows: [],
-              highlights: [],
+              arrows: body.arrows,
+              highlights: body.highlights,
               editable: false,
+              extraLines: body.extraLines,
+              extraAnnotations: body.extraAnnotations,
             },
             children: [],
           },
@@ -110,11 +87,7 @@ export const chessBoardMarkdownAdapterMatcher: BlockMarkdownAdapterMatcher = {
   },
   fromBlockSnapshot: {
     enter: (o, context) => {
-      const props = o.node.props as {
-        fen?: string;
-        orientation?: string;
-      };
-      const fen = props.fen ?? START_FEN;
+      const props = o.node.props as Partial<FenceProps>;
       const { walkerContext } = context;
       walkerContext
         .openNode(
@@ -122,10 +95,7 @@ export const chessBoardMarkdownAdapterMatcher: BlockMarkdownAdapterMatcher = {
             type: 'code',
             lang: CHESSBOARD_LANG,
             meta: null,
-            value:
-              props.orientation === 'black'
-                ? `fen: ${fen}\norientation: black`
-                : `fen: ${fen}`,
+            value: writeFenceBody({ ...props, fen: props.fen ?? START_FEN }),
           },
           'children'
         )

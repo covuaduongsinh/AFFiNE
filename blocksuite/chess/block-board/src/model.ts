@@ -39,6 +39,21 @@ export type ChessBoardProps = {
   highlights: ChessBoardHighlight[];
   /** Whether readers may move the pieces. Off makes it a fixed diagram. */
   editable: boolean;
+  /**
+   * Lines of the Markdown fence this block does not model, verbatim and in
+   * source order — `strict: false` above all, but also piece styles and keys
+   * from plugin versions we have never heard of.
+   *
+   * They are carried rather than parsed because a note is the author's, not
+   * ours: dropping a line the reader's Obsidian needs would silently rewrite
+   * their vault the first time a document went back out.
+   */
+  extraLines: string[];
+  /**
+   * Annotation tokens this block does not draw, verbatim and in source order —
+   * circles, squares, move-quality icons. Same bargain as {@link extraLines}.
+   */
+  extraAnnotations: string[];
 } & Omit<GfxCommonBlockProps, 'scale'>;
 
 export const START_FEN =
@@ -54,6 +69,8 @@ const defaultChessBoardProps = (): ChessBoardProps => ({
   arrows: [],
   highlights: [],
   editable: true,
+  extraLines: [],
+  extraAnnotations: [],
   index: 'a0',
   xywh: `[0,0,${DEFAULT_BOARD_SIZE},${DEFAULT_BOARD_SIZE}]`,
   lockedBySelf: false,
@@ -64,6 +81,14 @@ export const ChessBoardBlockSchema = defineBlockSchema({
   flavour: 'affine:chess-board',
   props: defaultChessBoardProps,
   metadata: {
+    /**
+     * Stays at 1 through additive prop changes. A block records the version it
+     * was written with, nothing migrates it, and a mismatch makes the editor
+     * replace the board with a "Block Version Mismatched" panel — so bumping
+     * this would blank every board already saved. Props missing from an older
+     * block are backfilled from the factory above, which is exactly right:
+     * nothing extra was ever known about them.
+     */
     version: 1,
     role: 'content',
     parent: [
