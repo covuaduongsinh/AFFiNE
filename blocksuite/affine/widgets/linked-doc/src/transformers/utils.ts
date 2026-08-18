@@ -219,13 +219,19 @@ export function download(blob: Blob, name: string) {
   URL.revokeObjectURL(fileURL);
 }
 
-const metaMatcher = /(?<=---)(.*?)(?=---)/ms;
-const bodyMatcher = /---.*?---/s;
+// Front matter only counts when it opens the file. Matching it anywhere makes
+// two `---` rules in the middle of a note look like a YAML block, so the text
+// between them is parsed as metadata and disappears from the imported doc.
+const matterMatcher =
+  /^\uFEFF?---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/;
 export const parseMatter = (contents: string) => {
-  const matterMatch = contents.match(metaMatcher);
-  if (!matterMatch || !matterMatch[0]) return null;
-  const metadata = loadYaml(matterMatch[0], { schema: FAILSAFE_SCHEMA });
+  const matterMatch = contents.match(matterMatcher);
+  if (!matterMatch || !matterMatch[1].trim()) return null;
+  const metadata = loadYaml(matterMatch[1], { schema: FAILSAFE_SCHEMA });
   if (!metadata || typeof metadata !== 'object') return null;
-  const body = contents.replace(bodyMatcher, '');
-  return { matter: matterMatch[0], body, metadata };
+  return {
+    matter: matterMatch[1],
+    body: contents.slice(matterMatch[0].length),
+    metadata,
+  };
 };

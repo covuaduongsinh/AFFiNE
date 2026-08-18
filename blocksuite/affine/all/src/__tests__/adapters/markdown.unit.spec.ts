@@ -5,6 +5,7 @@ import {
   BearTransformer,
   commitImportBatchToWorkspace,
   type ImportBatch,
+  isIgnoredObsidianPath,
   MarkdownTransformer,
   NotionHtmlTransformer,
   ObsidianTransformer,
@@ -51,6 +52,13 @@ function withRelativePath(file: File, relativePath: string): File {
     writable: false,
   });
   return file;
+}
+
+function vaultNote(vaultPath: string, markdown: string): File {
+  return withRelativePath(
+    new File([markdown], basename(vaultPath), { type: 'text/markdown' }),
+    vaultPath
+  );
 }
 
 function markdownFixture(relativePath: string): File {
@@ -880,6 +888,240 @@ Hello world
         }),
       ])
     );
+  });
+
+  test('keeps note bodies that only look like front matter', async () => {
+    const schema = new Schema().register(AffineSchemas);
+    const collection = new TestWorkspace();
+    collection.storeExtensions = testStoreExtensions;
+    collection.meta.initialize();
+
+    // No front matter, just two horizontal rules - but the text between them
+    // parses as YAML, which used to delete it from the imported doc.
+    const plan = await ObsidianTransformer.planObsidianVault({
+      collection,
+      schema,
+      importedFiles: [
+        vaultNote(
+          'vault/notes/puzzle.md',
+          [
+            'Trắng đi trước và thắng.',
+            '',
+            '---',
+            '',
+            'Answer: Rxe6',
+            '',
+            '---',
+            '',
+            'Hết bài.',
+          ].join('\n')
+        ),
+      ],
+      extensions: testStoreExtensions,
+    });
+
+    await commitPlannedImport(collection, schema, plan);
+    const deltas = collectSimplifiedDeltas(
+      snapshotDocByTitle(collection, 'puzzle', titleMap(collection))
+    )
+      .map(delta => delta.insert)
+      .join('\n');
+
+    expect(deltas).toContain('Answer: Rxe6');
+    expect(deltas).toContain('Hết bài.');
+  });
+
+  test('gives imported docs their real page title', async () => {
+    const schema = new Schema().register(AffineSchemas);
+    const collection = new TestWorkspace();
+    collection.storeExtensions = testStoreExtensions;
+    collection.meta.initialize();
+
+    const plan = await ObsidianTransformer.planObsidianVault({
+      collection,
+      schema,
+      importedFiles: [vaultNote('vault/notes/Bài giảng.md', 'Nội dung')],
+      extensions: testStoreExtensions,
+    });
+
+    const [doc] = plan.batch.docs;
+    expect(doc.snapshot.meta.title).toBe('Bài giảng');
+    expect(doc.snapshot.blocks.props.title).toEqual({
+      '$blocksuite:internal:text$': true,
+      delta: [{ insert: 'Bài giảng' }],
+    });
+  });
+
+  test('keeps front matter as tags and body links', async () => {
+    const schema = new Schema().register(AffineSchemas);
+    const collection = new TestWorkspace();
+    collection.storeExtensions = testStoreExtensions;
+    collection.meta.initialize();
+
+    const plan = await ObsidianTransformer.planObsidianVault({
+      collection,
+      schema,
+      importedFiles: [
+        vaultNote(
+          'vault/notes/Step 2.md',
+          [
+            '---',
+            'tags:',
+            '  - language/English',
+            '  - "#chess"',
+            'categories:',
+            '  - "[[ebook_translate]]"',
+            'author:',
+            '  - "[[Cor van Wijgerden]]"',
+            'nxb:',
+            '---',
+            '',
+            'Nội dung bài học.',
+          ].join('\n')
+        ),
+        vaultNote('vault/system/ebook_translate.md', 'Danh mục'),
+        vaultNote('vault/system/Cor van Wijgerden.md', 'Tác giả'),
+      ],
+      extensions: testStoreExtensions,
+    });
+
+    const doc = plan.batch.docs.find(doc => doc.meta?.title === 'Step 2');
+    // `categories` is a tag key for other importers; in a vault it holds
+    // wikilinks, so it belongs in the body instead.
+    expect(doc?.meta?.tags).toEqual(['language/English', 'chess']);
+
+    await commitPlannedImport(collection, schema, plan);
+    const deltas = collectSimplifiedDeltas(
+      snapshotDocByTitle(collection, 'Step 2', titleMap(collection))
+    );
+
+    expect(deltas.map(delta => delta.insert).join('\n')).toContain('author');
+    expect(deltas).toContainEqual(
+      expect.objectContaining({
+        reference: expect.objectContaining({
+          type: 'LinkedPage',
+          page: 'Cor van Wijgerden',
+        }),
+      })
+    );
+    expect(deltas).toContainEqual(
+      expect.objectContaining({
+        reference: expect.objectContaining({
+          type: 'LinkedPage',
+          page: 'ebook_translate',
+        }),
+      })
+    );
+    // An empty key carries nothing to show.
+    expect(deltas.map(delta => delta.insert).join('\n')).not.toContain('nxb');
+  });
+
+  test('an exactly named note wins over an emoji-titled twin', async () => {
+    const schema = new Schema().register(AffineSchemas);
+    const collection = new TestWorkspace();
+    collection.storeExtensions = testStoreExtensions;
+    collection.meta.initialize();
+
+    // The emoji note's title strips down to "Chess" too. Before ranking, that
+    // made the key ambiguous and every [[Chess]] in the vault stayed literal.
+    const plan = await ObsidianTransformer.planObsidianVault({
+      collection,
+      schema,
+      importedFiles: [
+        vaultNote('vault/03 - Subjects/Chess.md', 'Chủ đề cờ vua'),
+        vaultNote('vault/♟️ Chess.md', 'Bảng điều khiển'),
+        vaultNote('vault/notes/Bài học.md', 'Xem [[Chess]] để biết thêm.'),
+      ],
+      extensions: testStoreExtensions,
+    });
+
+    const subject = plan.batch.docs.find(
+      doc => doc.meta?.title === 'Chess' && doc.sourcePath?.includes('Subjects')
+    );
+    await commitPlannedImport(collection, schema, plan);
+    const deltas = collectSimplifiedDeltas(
+      snapshotDocByTitle(collection, 'Bài học', titleMap(collection))
+    );
+
+    expect(subject).toBeTruthy();
+    expect(deltas).toContainEqual(
+      expect.objectContaining({
+        reference: expect.objectContaining({
+          type: 'LinkedPage',
+          page: 'Chess',
+        }),
+      })
+    );
+    expect(deltas.map(delta => delta.insert).join('')).not.toContain(
+      '[[Chess]]'
+    );
+  });
+
+  test('skips the parts of a vault that are not the vault', async () => {
+    expect(isIgnoredObsidianPath('vault/.git/config')).toBe(true);
+    expect(isIgnoredObsidianPath('vault/.smart-env/cache.ajson')).toBe(true);
+    expect(isIgnoredObsidianPath('vault/.trash/old note.md')).toBe(true);
+    expect(
+      isIgnoredObsidianPath('vault/notes/Tasks.md.tmp.24164.fa88a1ca2893')
+    ).toBe(true);
+    expect(isIgnoredObsidianPath('vault/notes/keep.md')).toBe(false);
+    // The importer reads this one itself to find the attachment folder.
+    expect(isIgnoredObsidianPath('vault/.obsidian/app.json')).toBe(false);
+
+    const schema = new Schema().register(AffineSchemas);
+    const collection = new TestWorkspace();
+    collection.storeExtensions = testStoreExtensions;
+    collection.meta.initialize();
+
+    const plan = await ObsidianTransformer.planObsidianVault({
+      collection,
+      schema,
+      importedFiles: [
+        vaultNote('vault/.trash/old note.md', 'đã xoá'),
+        vaultNote('vault/notes/Tasks.md.tmp.24164.fa88a1ca2893', 'bản nháp'),
+        vaultNote('vault/notes/keep.md', 'giữ lại'),
+      ],
+      extensions: testStoreExtensions,
+    });
+
+    expect(plan.docIds).toHaveLength(1);
+    expect(plan.batch.docs[0].meta?.title).toBe('keep');
+    expect(plan.batch.blobs).toHaveLength(0);
+  });
+
+  test('streams a vault as batches with progress', async () => {
+    const schema = new Schema().register(AffineSchemas);
+    const collection = new TestWorkspace();
+    collection.storeExtensions = testStoreExtensions;
+    collection.meta.initialize();
+
+    const batches: ImportBatch[] = [];
+    for await (const batch of ObsidianTransformer.planObsidianVaultBatches({
+      collection,
+      schema,
+      importedFiles: [
+        ...Array.from({ length: 5 }, (_, index) =>
+          vaultNote(`vault/notes/note-${index}.md`, `Nội dung ${index}`)
+        ),
+        withRelativePath(
+          new File([new Uint8Array([137, 80, 78, 71])], 'logo.png', {
+            type: 'image/png',
+          }),
+          'vault/notes/logo.png'
+        ),
+      ],
+      extensions: testStoreExtensions,
+      batchSize: 2,
+    })) {
+      batches.push(batch);
+    }
+
+    expect(batches).toHaveLength(3);
+    expect(batches.map(batch => batch.docs.length)).toEqual([2, 2, 1]);
+    expect(batches.map(batch => batch.progress?.completed)).toEqual([2, 4, 5]);
+    expect(batches.map(batch => batch.done)).toEqual([false, false, true]);
+    // Blobs ride with the first batch so later docs can already embed them.
+    expect(batches.map(batch => batch.blobs.length)).toEqual([1, 0, 0]);
   });
 
   test('imports notion html zip golden baseline', async () => {

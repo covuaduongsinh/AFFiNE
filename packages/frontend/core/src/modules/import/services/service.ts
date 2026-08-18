@@ -2,6 +2,8 @@ import { getStoreManager } from '@affine/core/blocksuite/manager/store';
 import { ImportCommitService } from '@affine/core/desktop/dialogs/import/commit-service';
 import { commitNativeImport } from '@affine/core/desktop/dialogs/import/native-backend';
 import {
+  filterWebImportFiles,
+  obsidianWebImportLimits,
   preflightWebFilesImport,
   preflightWebZipImport,
 } from '@affine/core/desktop/dialogs/import/web-limits';
@@ -10,6 +12,7 @@ import { snapshotFile } from '@blocksuite/affine/shared/utils';
 import {
   BearTransformer,
   type ImportWarning,
+  isIgnoredObsidianPath,
   MarkdownTransformer,
   NotionHtmlTransformer,
   ObsidianTransformer,
@@ -94,26 +97,51 @@ export class ImportService extends Service {
     const commitService = this.createCommitService({
       organize: true,
       explorerIcon: true,
+      tag: true,
+      preserveNestedTagNames: true,
     });
-    if (!BUILD_CONFIG.isElectron) {
-      await preflightWebFilesImport(files);
-    }
     if (BUILD_CONFIG.isElectron) {
       return commitNativeImport('obsidian', files, commitService, context);
     }
-    const { files: snapshots, warnings } = await snapshotReadableFiles(files);
+
+    // A picked vault folder is mostly not the vault: `.git`, plugin caches and
+    // Dropbox conflict copies dwarf the notes. Dropping them here keeps the
+    // preflight honest and stops the reader from pulling hundreds of megabytes
+    // of junk into memory.
+    const vaultFiles = files.filter(
+      file => !isIgnoredObsidianPath(file.webkitRelativePath || file.name)
+    );
+    const { files: importableFiles, warnings: limitWarnings } =
+      filterWebImportFiles(vaultFiles, obsidianWebImportLimits);
+    await preflightWebFilesImport(importableFiles, obsidianWebImportLimits);
+
+    const { files: snapshots, warnings: readWarnings } =
+      await snapshotReadableFiles(importableFiles);
     if (!snapshots.length) {
       throw new Error('No readable files were found in the selected folder.');
     }
 
-    const { batch } = await ObsidianTransformer.planObsidianVault({
+    const warnings: ImportWarning[] = [...limitWarnings, ...readWarnings];
+    const docIds: string[] = [];
+    let rootFolderId: string | undefined;
+
+    for await (const batch of ObsidianTransformer.planObsidianVaultBatches({
       collection,
       schema: getAFFiNEWorkspaceSchema(),
       importedFiles: snapshots,
       extensions: getStoreManager().config.init().value.get('store'),
-    });
-    batch.warnings = [...(batch.warnings ?? []), ...warnings];
-    return commitService.commitBatch(batch);
+    })) {
+      if (context?.signal?.aborted) {
+        throw new DOMException('Import cancelled', 'AbortError');
+      }
+      context?.onProgress?.(batch.progress ?? { completed: 0, total: 0 });
+      const result = await commitService.commitBatch(batch);
+      docIds.push(...result.docIds);
+      warnings.push(...result.warnings);
+      rootFolderId ??= result.rootFolderId;
+    }
+
+    return { docIds, rootFolderId, warnings };
   }
 
   async importBearBackup(file: File, context?: ImportRunContext) {
@@ -151,6 +179,7 @@ export class ImportService extends Service {
     organize?: boolean;
     explorerIcon?: boolean;
     tag?: boolean;
+    preserveNestedTagNames?: boolean;
   }) {
     return new ImportCommitService({
       collection: this.workspaceService.workspace.docCollection,
@@ -161,6 +190,7 @@ export class ImportService extends Service {
         ? this.explorerIconService
         : undefined,
       tagService: options.tag ? this.tagService : undefined,
+      preserveNestedTagNames: options.preserveNestedTagNames,
       logger,
     });
   }

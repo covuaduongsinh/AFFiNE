@@ -1,10 +1,16 @@
 import { describe, expect, test } from 'vitest';
 
 import {
+  filterWebImportFiles,
+  obsidianWebImportLimits,
   preflightWebFilesImport,
   preflightWebZipImport,
   WebImportLimitError,
 } from './web-limits';
+
+function fileOfSize(name: string, size: number) {
+  return new File([new Uint8Array(size)], name);
+}
 
 function zipDirectoryFile(names: string[]) {
   const chunks = names.map(name => {
@@ -102,5 +108,50 @@ describe('preflightWebFilesImport', () => {
         maxDocumentCount: 1,
       })
     ).resolves.toBeUndefined();
+  });
+
+  test('accepts a vault-sized folder under the Obsidian limits', async () => {
+    const files = Array.from(
+      { length: 435 },
+      (_, index) => new File(['note'], `note-${index}.md`)
+    );
+    await expect(
+      preflightWebFilesImport(files, obsidianWebImportLimits)
+    ).resolves.toBeUndefined();
+    // The same folder is still too many documents for the shared web limits.
+    await expect(preflightWebFilesImport(files)).rejects.toBeInstanceOf(
+      WebImportLimitError
+    );
+  });
+});
+
+describe('filterWebImportFiles', () => {
+  test('skips oversized files and nested zips instead of failing', () => {
+    const kept = new File(['note'], 'keep.md');
+    const { files, warnings } = filterWebImportFiles(
+      [kept, fileOfSize('huge.pdf', 2048), new File(['zip'], 'archive.zip')],
+      {
+        maxTotalBytes: 1024 * 1024,
+        maxEntryBytes: 1024,
+        maxEntryCount: 10,
+        maxNestedZipDepth: 0,
+        maxDocumentCount: 10,
+      }
+    );
+
+    expect(files).toEqual([kept]);
+    expect(warnings.map(warning => warning.code)).toEqual([
+      'file-too-large',
+      'nested-zip',
+    ]);
+    expect(warnings[0].sourcePath).toBe('huge.pdf');
+  });
+
+  test('keeps everything that fits', () => {
+    const files = [new File(['a'], 'a.md'), new File(['b'], 'b.png')];
+    expect(filterWebImportFiles(files, obsidianWebImportLimits)).toEqual({
+      files,
+      warnings: [],
+    });
   });
 });
