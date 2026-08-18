@@ -30,7 +30,11 @@ test.beforeEach(async ({ context }) => {
  * that claims a board rendered has to check its measured size.
  */
 async function expectVisibleBoard(page: Page, host: string) {
-  const board = page.locator(`${host} [role="grid"]`).first();
+  const hostEl = page.locator(host).first();
+  // A page of many diagrams only mounts a board near the viewport. Bring this
+  // one in first, or the assertion waits on a grid that does not exist yet.
+  await hostEl.scrollIntoViewIfNeeded();
+  const board = hostEl.locator('[role="grid"]').first();
   await expect(board).toBeVisible({ timeout: 30000 });
 
   const box = await board.boundingBox();
@@ -40,7 +44,7 @@ async function expectVisibleBoard(page: Page, host: string) {
   // A board is square; a wildly off ratio means the aspect rule broke.
   expect(Math.abs(box!.width - box!.height)).toBeLessThan(4);
 
-  await expect(page.locator(`${host} [role="gridcell"]`)).toHaveCount(64);
+  await expect(hostEl.locator('[role="gridcell"]')).toHaveCount(64);
 }
 
 /** Open a new doc with the caret in an empty body paragraph. */

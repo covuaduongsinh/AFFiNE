@@ -55,6 +55,20 @@ export class ChessBoardBlockComponent extends CaptionedBlockComponent<ChessBoard
       color: var(--affine-text-secondary-color);
       font-size: 14px;
     }
+
+    /*
+     * Space held for a board that has not been drawn yet. The numbers mirror
+     * the board component's own box (BOARD_SIZE, square) so the document is
+     * the right length before a single board exists — they cannot be imported,
+     * because that constant lives in the React package this one must not
+     * depend on.
+     */
+    .chess-board-pending {
+      width: 100%;
+      max-width: 420px;
+      margin: 0 auto;
+      aspect-ratio: 1 / 1;
+    }
   `;
 
   get isBlockSelected() {
@@ -64,18 +78,66 @@ export class ChessBoardBlockComponent extends CaptionedBlockComponent<ChessBoard
   }
 
   /**
-   * Opt out of the editor's native-selection syncing, the way the database
-   * block does.
+   * Whether this board has been drawn yet.
    *
-   * `RangeBinding` watches `selectionchange` on the document and treats any
-   * selection without an inline-text endpoint as stray: it removes the range
-   * and ends up calling `document.activeElement.blur()`. A caret inside this
-   * block's FEN box is exactly such a selection, so without this attribute the
-   * editor takes the caret back moments after a click grants it.
+   * A lesson document is not one diagram but a hundred — the user's *Step 2
+   * Trainer Manual* holds 111 of them — and each one is a React root drawing
+   * 64 squares. Building all of them to show the first screenful is work
+   * nobody asked for, so a board waits until it is near the viewport.
+   *
+   * It is never taken down again: keeping a drawn board costs a re-render at
+   * most, while unmounting would throw away the position editor mid-edit and
+   * make scrolling back up jump.
    */
+  private _drawn = false;
+
+  private _viewportObserver: IntersectionObserver | null = null;
+
   override connectedCallback() {
     super.connectedCallback();
+    // Opt out of the editor's native-selection syncing, the way the database
+    // block does. `RangeBinding` treats a caret in this block's FEN box as
+    // stray and blurs it unless the field is excluded.
     this.setAttribute(RANGE_SYNC_EXCLUDE_ATTR, 'true');
+    this._watchViewport();
+  }
+
+  override disconnectedCallback() {
+    this._viewportObserver?.disconnect();
+    this._viewportObserver = null;
+    super.disconnectedCallback();
+  }
+
+  private _watchViewport() {
+    // The edgeless subclass draws through `renderGfxBlock` and ignores
+    // `_drawn`. Watching it would only attach an observer nobody reads.
+    if (this.constructor !== ChessBoardBlockComponent) {
+      this._drawn = true;
+      return;
+    }
+
+    // Somewhere without the API — a test environment, a non-browser host — a
+    // board simply draws at once rather than never.
+    if (typeof IntersectionObserver === 'undefined') {
+      this._drawn = true;
+      return;
+    }
+
+    this._viewportObserver = new IntersectionObserver(
+      entries => {
+        if (!entries.some(entry => entry.isIntersecting)) return;
+        this._viewportObserver?.disconnect();
+        this._viewportObserver = null;
+        this._drawn = true;
+        this.requestUpdate();
+      },
+      // Draw well before the board is on screen. A drawn board is taller than
+      // the space held for it, since the author controls sit underneath, and
+      // the margin keeps that growth below the fold where it moves nothing
+      // the reader is looking at.
+      { rootMargin: '600px' }
+    );
+    this._viewportObserver.observe(this);
   }
 
   /**
@@ -111,11 +173,13 @@ export class ChessBoardBlockComponent extends CaptionedBlockComponent<ChessBoard
         @focusin=${this._onFieldFocus}
       >
         ${
-          renderer
-            ? renderer.render(this.model)
-            : html`<div class="chess-board-placeholder">
-                Chess board unavailable
-              </div>`
+          !this._drawn
+            ? html`<div class="chess-board-pending"></div>`
+            : renderer
+              ? renderer.render(this.model)
+              : html`<div class="chess-board-placeholder">
+                  Chess board unavailable
+                </div>`
         }
       </div>
     `;
