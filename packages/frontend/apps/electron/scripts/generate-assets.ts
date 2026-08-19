@@ -43,6 +43,22 @@ if (releaseVersionEnv && electronPackageJson.version !== releaseVersionEnv) {
 
 const cwd = repoRootDir;
 
+const arasanDir = path.join(publicDistDir, 'arasan');
+const arasanPresent =
+  fs.existsSync(path.join(arasanDir, 'arasanx-64.exe')) ||
+  fs.existsSync(path.join(arasanDir, 'arasanx-64-avx2.exe')) ||
+  fs.existsSync(path.join(arasanDir, 'arasanx-64'));
+if (!process.env.SKIP_ARASAN_FETCH && !arasanPresent) {
+  const fetch = spawnSync(
+    'node',
+    [path.join(repoRootDir, 'scripts', 'fetch-arasan.mjs')],
+    { stdio: 'inherit', cwd: repoRootDir, shell: true }
+  );
+  if (fetch.status !== 0 && process.platform === 'win32') {
+    throw new Error('failed to fetch Arasan engine binaries');
+  }
+}
+
 // step 1: build web dist
 if (!process.env.SKIP_WEB_BUILD) {
   spawnSync('yarn', ['affine', '@affine/electron-renderer', 'build'], {

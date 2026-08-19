@@ -166,5 +166,35 @@ export function moveToUci(move: Move): string {
   return `${squareToAlgebraic(move.from)}${squareToAlgebraic(move.to)}${promotion}`;
 }
 
+/**
+ * Resolve a UCI token (`e2e4`, `e7e8q`) against the legal moves of `pos`.
+ *
+ * Distinct from {@link sanToMove}: this rejects SAN (`e4`, `Nf3`) so an engine
+ * line can never be mistaken for a human annotation. A promotion must include
+ * its piece letter — that is how {@link moveToUci} writes it.
+ */
+export function uciToMove(pos: Position, uci: string): Move {
+  const token = uci.trim().toLowerCase();
+  const match = /^([a-h][1-8])([a-h][1-8])([qrbn])?$/.exec(token);
+  if (!match) throw new SanError(`Illegal or unparsable UCI move "${uci}"`);
+
+  const from = algebraicToSquare(match[1]);
+  const to = algebraicToSquare(match[2]);
+  const promotionChar = match[3];
+
+  const move = legalMoves(pos).find(candidate => {
+    if (candidate.from !== from || candidate.to !== to) return false;
+    if (candidate.promotion === EMPTY) return promotionChar === undefined;
+    return (
+      promotionChar !== undefined &&
+      typeToSanChar(candidate.promotion as PieceType).toLowerCase() ===
+        promotionChar
+    );
+  });
+
+  if (!move) throw new SanError(`Illegal or unparsable UCI move "${uci}"`);
+  return move;
+}
+
 /** Exposed so callers can normalize user input the same way the parser does. */
 export { normalizeSan };

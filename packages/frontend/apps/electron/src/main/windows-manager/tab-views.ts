@@ -272,6 +272,7 @@ export class WebContentViewsManager {
   }
 
   setTabUIReady = (tabId: string) => {
+    if (this.appTabsUIReady.has(tabId)) return;
     this.appTabsUIReady$.next(new Set([...this.appTabsUIReady, tabId]));
     this.reorderViews();
     const view = this.tabViewsMap.get(tabId);
@@ -946,11 +947,20 @@ export class WebContentViewsManager {
     if (type !== 'shell') {
       view.webContents.on(
         'did-start-navigation',
-        (_event, _url, isInPlace, isMainFrame) => {
+        (_event, url, isInPlace, isMainFrame) => {
           // Keep shell fallback lifecycle tied to main-frame navigation only.
-          if (isMainFrame && !isInPlace) {
-            this.setTabUIUnready(viewId);
+          // Same-origin reloads (rspack HMR) must not hide the tab — that
+          // flashes the whole desktop window.
+          if (!isMainFrame || isInPlace) return;
+          try {
+            const prev = view.webContents.getURL();
+            if (prev && new URL(url).origin === new URL(prev).origin) {
+              return;
+            }
+          } catch {
+            // treat as a real navigation
           }
+          this.setTabUIUnready(viewId);
         }
       );
       view.webContents.on('did-finish-load', () => {
@@ -959,6 +969,9 @@ export class WebContentViewsManager {
           view.webContents
         );
         this.updateBackgroundThrottling();
+        if (!this.appTabsUIReady.has(viewId)) {
+          this.setTabUIReady(viewId);
+        }
       });
     } else {
       view.webContents.on('focus', () => {

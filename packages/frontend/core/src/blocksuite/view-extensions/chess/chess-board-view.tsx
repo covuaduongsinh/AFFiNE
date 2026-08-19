@@ -6,6 +6,7 @@ import {
   type SquareName,
 } from '@affine/component/ui/chess';
 import { useSignalValue } from '@affine/core/modules/doc-info/utils';
+import { I18n } from '@affine/i18n';
 import {
   ANNOTATION_COLORS,
   type AnnotationColorKey,
@@ -28,11 +29,23 @@ import {
   writeFen,
 } from '@blocksuite/chess-core';
 import clsx from 'clsx';
-import { type CSSProperties, useCallback, useMemo, useState } from 'react';
+import {
+  type CSSProperties,
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 
+import { formatScore } from './analysis-ui';
 import * as styles from './chess-board-view.css';
 import * as gameStyles from './chess-game-view.css';
+import { EvalBar } from './eval-bar';
 import { guardFieldPointer, nestedFieldEvents } from './field-guard';
+import { useChessAnalysis } from './use-chess-analysis';
+
+const MemoChessboard = memo(Chessboard);
 
 export interface ChessBoardViewProps {
   model: ChessBoardBlockModel;
@@ -105,6 +118,18 @@ export const ChessBoardView = ({ model }: ChessBoardViewProps) => {
   const editable = useSignalValue(model.props.editable$);
   const arrows = useSignalValue(model.props.arrows$);
   const highlights = useSignalValue(model.props.highlights$);
+  const {
+    activate,
+    available,
+    engineArrow,
+    isActive,
+    lastInfo,
+    live,
+    requestAnalyze,
+    startLive,
+    status,
+    stop,
+  } = useChessAnalysis(model.id);
 
   const [selected, setSelected] = useState<string | null>(null);
   /** `null` when the position editor is closed; the draft FEN when open. */
@@ -356,6 +381,16 @@ export const ChessBoardView = ({ model }: ChessBoardViewProps) => {
     model.store.updateBlock(model, { editable: !movesEnabled });
   }, [model, movesEnabled, readonly]);
 
+  const mergedArrows = useMemo(
+    () => [...(arrows ?? []), ...(engineArrow ? [engineArrow] : [])],
+    [arrows, engineArrow]
+  );
+
+  useEffect(() => {
+    if (!live || !isActive) return;
+    requestAnalyze(editing ? draftValue : fen);
+  }, [isActive, live, requestAnalyze, draftValue, editing, fen]);
+
   const openEditor = useCallback(() => {
     setDraft(fen);
     setTool('hand');
@@ -365,30 +400,46 @@ export const ChessBoardView = ({ model }: ChessBoardViewProps) => {
     // tabIndex mirrors the game view: a click into the board must focus the
     // container, so the paste watcher can tell "a FEN pasted onto this board"
     // from "a FEN pasted into the document" and replace the position in place.
-    <div className={styles.container} tabIndex={0}>
-      <Chessboard
-        fen={editing ? draftValue : fen}
-        orientation={orientation}
-        // Annotating freezes the pieces: one click cannot both tint a square
-        // and pick up whatever stands on it.
-        interactive={editing ? !readonly : annotatingNow ? false : interactive}
-        annotatable={annotatingNow}
-        selected={editing || annotatingNow ? null : selected}
-        onSelect={editing ? noop : setSelected}
-        legalDestinations={editing || annotatingNow ? [] : destinations}
-        check={editing ? undefined : checkSquare}
-        arrows={arrows}
-        highlights={highlights}
-        onMove={editing ? handleSetupMove : handleMove}
-        onSquareClick={
-          editing
-            ? handleSetupSquare
-            : annotatingNow
-              ? handleHighlightToggle
-              : undefined
-        }
-        onArrowDraw={handleArrowDraw}
-      />
+    <div
+      className={styles.container}
+      tabIndex={0}
+      onPointerDown={activate}
+      onFocusCapture={activate}
+    >
+      <div className={gameStyles.boardWithEval}>
+        {available && (lastInfo || live) && position && (
+          <EvalBar
+            score={lastInfo?.score ?? { type: 'cp', value: 0 }}
+            turn={position.turn}
+            orientation={orientation}
+          />
+        )}
+        <MemoChessboard
+          fen={editing ? draftValue : fen}
+          orientation={orientation}
+          // Annotating freezes the pieces: one click cannot both tint a square
+          // and pick up whatever stands on it.
+          interactive={
+            editing ? !readonly : annotatingNow ? false : interactive
+          }
+          annotatable={annotatingNow}
+          selected={editing || annotatingNow ? null : selected}
+          onSelect={editing ? noop : setSelected}
+          legalDestinations={editing || annotatingNow ? [] : destinations}
+          check={editing ? undefined : checkSquare}
+          arrows={mergedArrows}
+          highlights={highlights}
+          onMove={editing ? handleSetupMove : handleMove}
+          onSquareClick={
+            editing
+              ? handleSetupSquare
+              : annotatingNow
+                ? handleHighlightToggle
+                : undefined
+          }
+          onArrowDraw={handleArrowDraw}
+        />
+      </div>
       {/* Author-only controls; hidden on the whiteboard, where the block fills
           a fixed bound with the board alone (see edgeless-board-block.ts). */}
       {!readonly && (
@@ -426,6 +477,37 @@ export const ChessBoardView = ({ model }: ChessBoardViewProps) => {
           >
             {annotating ? 'Chú thích: Bật' : 'Chú thích: Tắt'}
           </button>
+          <button
+            className={clsx(
+              gameStyles.controlButton,
+              live && isActive && gameStyles.currentMove
+            )}
+            data-testid="chess-board-analyze"
+            disabled={!available}
+            title={
+              available
+                ? I18n.t('com.affine.chess.engine.analyze')
+                : I18n.t('com.affine.chess.engine.unavailable')
+            }
+            onClick={startLive}
+          >
+            {I18n.t('com.affine.chess.engine.analyze')}
+          </button>
+          <button
+            className={gameStyles.controlButton}
+            data-testid="chess-board-stop"
+            disabled={
+              !isActive || (status !== 'thinking' && status !== 'scanning')
+            }
+            onClick={stop}
+          >
+            {I18n.t('com.affine.chess.engine.stop')}
+          </button>
+          {lastInfo && position && (
+            <span className={gameStyles.header}>
+              {formatScore(lastInfo.score, position.turn)}
+            </span>
+          )}
         </div>
       )}
       {/* The colours are the four the Obsidian plugin can name, so a lesson

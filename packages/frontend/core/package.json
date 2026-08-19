@@ -27,6 +27,7 @@
     "@blocksuite/chess-block-board": "workspace:*",
     "@blocksuite/chess-block-game": "workspace:*",
     "@blocksuite/chess-core": "workspace:*",
+    "@blocksuite/chess-engine": "workspace:*",
     "@blocksuite/data-view": "workspace:*",
     "@blocksuite/global": "workspace:*",
     "@blocksuite/icons": "^2.2.17",

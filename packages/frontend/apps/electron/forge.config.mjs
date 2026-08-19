@@ -1,4 +1,5 @@
 import cp from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { readdir, rm, symlink } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -345,6 +346,9 @@ export default {
     extraResource: [
       './resources/app-update.yml',
       ...(platform === 'linux' ? ['./resources/affine.metainfo.xml'] : []),
+      ...(existsSync(path.join(__dirname, 'resources', 'arasan'))
+        ? ['./resources/arasan']
+        : []),
     ],
     protocols: [
       {

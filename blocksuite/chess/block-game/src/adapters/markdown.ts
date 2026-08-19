@@ -58,6 +58,7 @@ export const chessGameMarkdownAdapterMatcher: BlockMarkdownAdapterMatcher = {
   },
   fromBlockSnapshot: {
     enter: (o, context) => {
+      // analysisJson is a local overlay — PGN is the interchange format.
       const props = o.node.props as { pgn?: string };
       const { walkerContext } = context;
       walkerContext

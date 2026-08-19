@@ -68,6 +68,7 @@ export {
   normalizeSan,
   SanError,
   sanToMove,
+  uciToMove,
 } from './san.js';
 export { type FenParts, readPlacement, writeFen } from './setup.js';
 export {

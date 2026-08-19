@@ -1,5 +1,8 @@
 import { Chessboard } from '@affine/component/ui/chess';
+import { ChessCoachService } from '@affine/core/modules/chess-coach';
 import { useSignalValue } from '@affine/core/modules/doc-info/utils';
+import { ViewService, WorkbenchService } from '@affine/core/modules/workbench';
+import { I18n } from '@affine/i18n';
 import type { ChessGameBlockModel } from '@blocksuite/chess-block-game';
 import {
   algebraicToSquare,
@@ -26,11 +29,22 @@ import {
   toFen,
   WHITE,
 } from '@blocksuite/chess-core';
+import {
+  applyScanToGame,
+  type MoveLabel,
+  pvUciToSan,
+} from '@blocksuite/chess-engine';
+import { useServiceOptional } from '@toeverything/infra';
 import clsx from 'clsx';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { formatScore, labelForPath, splitMoveComment } from './analysis-ui';
 import * as styles from './chess-game-view.css';
+import { EvalBar } from './eval-bar';
 import { guardFieldPointer, nestedFieldEvents } from './field-guard';
+import { useChessAnalysis } from './use-chess-analysis';
+
+const MemoChessboard = memo(Chessboard);
 
 export interface ChessGameViewProps {
   model: ChessGameBlockModel;
@@ -66,6 +80,23 @@ function numbering(node: MoveNode) {
   };
 }
 
+const MOVE_LABEL_CLASS: Partial<Record<MoveLabel, string>> = {
+  inaccuracy: styles.moveInaccuracy,
+  mistake: styles.moveMistake,
+  blunder: styles.moveBlunder,
+};
+
+function moveLabelTitle(label?: MoveLabel): string | undefined {
+  if (label === 'inaccuracy') {
+    return I18n.t('com.affine.chess.engine.inaccuracy');
+  }
+  if (label === 'mistake') return I18n.t('com.affine.chess.engine.mistake');
+  if (label === 'blunder') return I18n.t('com.affine.chess.engine.blunder');
+  return undefined;
+}
+
+const SCAN_DEPTHS = [10, 12, 14, 16] as const;
+
 interface MoveTokenProps {
   node: MoveNode;
   path: MovePath;
@@ -73,6 +104,7 @@ interface MoveTokenProps {
   onSelect: (path: MovePath) => void;
   /** Black must restate the number after a comment or a variation. */
   forceNumber: boolean;
+  label?: MoveLabel;
 }
 
 const MoveToken = ({
@@ -81,6 +113,7 @@ const MoveToken = ({
   currentPath,
   onSelect,
   forceNumber,
+  label,
 }: MoveTokenProps) => {
   const { isWhite, number } = numbering(node);
 
@@ -97,8 +130,10 @@ const MoveToken = ({
         tabIndex={0}
         className={clsx(
           styles.move,
-          samePath(path, currentPath) && styles.currentMove
+          samePath(path, currentPath) && styles.currentMove,
+          label && MOVE_LABEL_CLASS[label]
         )}
+        title={moveLabelTitle(label)}
         onClick={() => onSelect(path)}
         onKeyDown={event => {
           if (event.key === 'Enter' || event.key === ' ') onSelect(path);
@@ -108,7 +143,17 @@ const MoveToken = ({
         {node.nags.map(nag => NAG_SYMBOLS[nag] ?? `$${nag}`).join('')}
       </span>{' '}
       {node.comment !== undefined && (
-        <span className={styles.comment}>{node.comment}</span>
+        <span className={styles.comment}>
+          {splitMoveComment(node.comment).map((part, index) =>
+            part.kind === 'eval' ? (
+              <span key={index} className={styles.evalGlyph}>
+                {part.value}
+              </span>
+            ) : (
+              part.value
+            )
+          )}
+        </span>
       )}
     </>
   );
@@ -121,6 +166,7 @@ interface MoveListProps {
   currentPath: MovePath;
   onSelect: (path: MovePath) => void;
   forceNumber?: boolean;
+  labels?: ReadonlyMap<string, MoveLabel>;
 }
 
 /**
@@ -136,6 +182,7 @@ const MoveList = ({
   currentPath,
   onSelect,
   forceNumber = false,
+  labels,
 }: MoveListProps) => {
   if (nodes.length === 0) return null;
 
@@ -150,6 +197,7 @@ const MoveList = ({
         currentPath={currentPath}
         onSelect={onSelect}
         forceNumber={forceNumber}
+        label={labels ? labelForPath(labels, mainPath) : undefined}
       />
       {alternatives.map((alternative, index) => {
         // `index` counts from the second sibling, so the real index is +1.
@@ -162,6 +210,7 @@ const MoveList = ({
               currentPath={currentPath}
               onSelect={onSelect}
               forceNumber
+              label={labels ? labelForPath(labels, alternativePath) : undefined}
             />
             <MoveList
               nodes={alternative.children}
@@ -169,6 +218,7 @@ const MoveList = ({
               currentPath={currentPath}
               onSelect={onSelect}
               forceNumber={alternative.comment !== undefined}
+              labels={labels}
             />
           </span>
         );
@@ -179,6 +229,7 @@ const MoveList = ({
         currentPath={currentPath}
         onSelect={onSelect}
         forceNumber={alternatives.length > 0 || main.comment !== undefined}
+        labels={labels}
       />
     </>
   );
@@ -298,16 +349,50 @@ const NAG_CHOICES: { nag: number; symbol: string; label: string }[] = [
  * exactly what another chess tool would read.
  */
 export const ChessGameView = ({ model }: ChessGameViewProps) => {
+  const workbenchService = useServiceOptional(WorkbenchService);
+  const viewService = useServiceOptional(ViewService);
+  const coach = useServiceOptional(ChessCoachService);
   const pgn = useSignalValue(model.props.pgn$);
   const currentPath = useSignalValue(model.props.currentPath$);
   const orientation = useSignalValue(model.props.orientation$);
+  const analysisJson = useSignalValue(model.props.analysisJson$) ?? '';
+  const readonly = model.store.readonly;
+  const persistScan = useCallback(
+    (json: string) => {
+      if (readonly) return;
+      model.store.captureSync();
+      model.store.updateBlock(model, { analysisJson: json });
+    },
+    [model, readonly]
+  );
+  const analysis = useChessAnalysis(model.id, {
+    storedJson: analysisJson,
+    persistScan,
+  });
+  const {
+    activate,
+    available,
+    engineArrow,
+    isActive,
+    labels,
+    lastInfo,
+    live,
+    progress,
+    requestAnalyze,
+    runScan,
+    scan,
+    scanError,
+    scanning,
+    startLive,
+    status,
+    stop,
+  } = analysis;
+  const [scanDepth, setScanDepth] = useState(14);
 
   const [selected, setSelected] = useState<string | null>(null);
   /** `null` when the PGN editor is closed; the draft text when it is open. */
   const [draft, setDraft] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const readonly = model.store.readonly;
 
   const game = useMemo<Game | null>(() => {
     try {
@@ -347,6 +432,39 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
     },
     [model, pgn, readonly]
   );
+
+  useEffect(() => {
+    if (!coach) return;
+    return coach.session.attachGame(model.id, {
+      get: () => ({
+        pgn: model.props.pgn,
+        currentPath: model.props.currentPath ?? [],
+        analysisJson: model.props.analysisJson ?? '',
+      }),
+      apply: next => {
+        if (model.store.readonly) return;
+        model.store.captureSync();
+        model.store.updateBlock(model, {
+          pgn: next.pgn,
+          currentPath: next.currentPath,
+          analysisJson: next.analysisJson ?? '',
+        });
+      },
+    });
+  }, [coach, model]);
+
+  const openCoach = useCallback(() => {
+    activate();
+    workbenchService?.workbench.openSidebar();
+    viewService?.view.activeSidebarTab('chess-coach');
+  }, [activate, viewService, workbenchService]);
+
+  const applyToPgn = useCallback(() => {
+    if (!scan) return;
+    mutate(fresh => {
+      applyScanToGame(fresh, scan);
+    });
+  }, [mutate, scan]);
 
   const path = useMemo(() => currentPath ?? [], [currentPath]);
 
@@ -547,6 +665,16 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
     return () => element.removeEventListener('keydown', onKeyDown);
   }, [flip, stepBack, stepForward]);
 
+  const fenNow = position ? toFen(position) : null;
+  const engineArrows = useMemo(
+    () => (engineArrow ? [engineArrow] : undefined),
+    [engineArrow]
+  );
+  useEffect(() => {
+    if (!live || !isActive || !fenNow) return;
+    requestAnalyze(fenNow);
+  }, [isActive, live, requestAnalyze, fenNow]);
+
   if (!game || !position) {
     return (
       <div className={styles.container}>
@@ -570,19 +698,35 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
   const atEnd = childrenAt(game, path).length === 0;
 
   return (
-    <div ref={containerRef} className={styles.container} tabIndex={0}>
+    <div
+      ref={containerRef}
+      className={styles.container}
+      tabIndex={0}
+      onPointerDown={activate}
+      onFocusCapture={activate}
+    >
       <div className={styles.boardColumn}>
-        <Chessboard
-          fen={toFen(position)}
-          orientation={orientation}
-          interactive={!readonly}
-          selected={selected}
-          onSelect={setSelected}
-          legalDestinations={destinations}
-          check={checkSquare}
-          lastMove={lastMove}
-          onMove={handleMove}
-        />
+        <div className={styles.boardWithEval}>
+          {available && (lastInfo || live) && (
+            <EvalBar
+              score={lastInfo?.score ?? { type: 'cp', value: 0 }}
+              turn={position.turn}
+              orientation={orientation}
+            />
+          )}
+          <MemoChessboard
+            fen={fenNow ?? toFen(position)}
+            orientation={orientation}
+            interactive={!readonly}
+            selected={selected}
+            onSelect={setSelected}
+            legalDestinations={destinations}
+            check={checkSquare}
+            lastMove={lastMove}
+            arrows={engineArrows}
+            onMove={handleMove}
+          />
+        </div>
         <div className={styles.controls}>
           <button
             className={styles.controlButton}
@@ -656,7 +800,127 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
               basePath={[]}
               currentPath={path}
               onSelect={goTo}
+              labels={labels}
             />
+          )}
+        </div>
+
+        <div className={styles.analysis}>
+          <div className={styles.analysisRow}>
+            <button
+              className={clsx(
+                styles.controlButton,
+                live && isActive && styles.currentMove
+              )}
+              data-testid="chess-analyze"
+              disabled={!available}
+              title={
+                available
+                  ? I18n.t('com.affine.chess.engine.analyze')
+                  : I18n.t('com.affine.chess.engine.unavailable')
+              }
+              onClick={startLive}
+            >
+              {I18n.t('com.affine.chess.engine.analyze')}
+            </button>
+            <button
+              className={clsx(
+                styles.controlButton,
+                (scanning || status === 'scanning') && styles.currentMove
+              )}
+              data-testid="chess-scan"
+              disabled={!available || scanning}
+              title={I18n.t('com.affine.chess.engine.scan')}
+              onClick={() => runScan(game, scanDepth)}
+            >
+              {scanning
+                ? I18n.t('com.affine.chess.engine.scanning')
+                : I18n.t('com.affine.chess.engine.scan')}
+            </button>
+            <button
+              className={styles.controlButton}
+              data-testid="chess-stop"
+              disabled={
+                !scanning &&
+                (!isActive || (status !== 'thinking' && status !== 'scanning'))
+              }
+              onClick={stop}
+            >
+              {I18n.t('com.affine.chess.engine.stop')}
+            </button>
+            <button
+              className={styles.controlButton}
+              data-testid="chess-apply-pgn"
+              disabled={readonly || !scan}
+              title={I18n.t('com.affine.chess.engine.apply')}
+              onClick={applyToPgn}
+            >
+              {I18n.t('com.affine.chess.engine.apply')}
+            </button>
+            <button
+              className={styles.controlButton}
+              data-testid="chess-ask-coach"
+              title={I18n.t('com.affine.chess.coach.ask')}
+              onClick={openCoach}
+            >
+              {I18n.t('com.affine.chess.coach.ask')}
+            </button>
+            <select
+              className={styles.controlButton}
+              aria-label={I18n.t('com.affine.chess.engine.depth')}
+              value={scanDepth}
+              onChange={event => setScanDepth(Number(event.target.value))}
+            >
+              {SCAN_DEPTHS.map(depth => (
+                <option key={depth} value={depth}>
+                  {I18n.t('com.affine.chess.engine.depth')} {depth}
+                </option>
+              ))}
+            </select>
+          </div>
+          {lastInfo && (
+            <div className={styles.analysisPv} data-testid="chess-engine-pv">
+              {formatScore(lastInfo.score, position.turn)} ·{' '}
+              {pvUciToSan(toFen(position), lastInfo.pv).join(' ')}
+            </div>
+          )}
+          {!available && (
+            <div data-testid="chess-engine-unavailable">
+              {I18n.t('com.affine.chess.engine.unavailable')}
+            </div>
+          )}
+          {(scanning || (progress && progress.total > 0)) && (
+            <>
+              <div className={styles.progress}>
+                <div
+                  className={styles.progressFill}
+                  style={{
+                    width: `${
+                      progress && progress.total > 0
+                        ? (progress.done / progress.total) * 100
+                        : 0
+                    }%`,
+                  }}
+                />
+              </div>
+              <div data-testid="chess-scan-progress">
+                {I18n.t('com.affine.chess.engine.scanning')}
+                {progress && progress.total > 0
+                  ? ` ${progress.done} / ${progress.total}`
+                  : ''}
+              </div>
+            </>
+          )}
+          {scanError && (
+            <div className={styles.error} data-testid="chess-scan-error">
+              {I18n.t('com.affine.chess.engine.scanFailed')}: {scanError}
+            </div>
+          )}
+          {scan && (
+            <div>
+              {I18n.t('com.affine.chess.engine.acpl')}{' '}
+              {Math.round(scan.whiteAcpl)} / {Math.round(scan.blackAcpl)}
+            </div>
           )}
         </div>
 

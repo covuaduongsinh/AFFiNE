@@ -1,0 +1,17 @@
+{
+  "version": "26.0",
+  "tag": "v26.0",
+  "license": "MIT",
+  "source": "https://github.com/jdart1/arasan-chess",
+  "licenseUrl": "https://github.com/jdart1/arasan-chess/blob/v26.0/LICENSE",
+  "windows": {
+    "url": "https://github.com/jdart1/arasan-chess/releases/download/v26.0/arasan26.0.zip",
+    "sha256": "57e25af335d48fa3e82aa3a896895025fea3237d498be3baa9d83f218e2f2d94",
+    "extract": [
+      "arasanx-64.exe",
+      "arasanx-64-avx2.exe",
+      "arasanv8-20260622.nnue",
+      "LICENSE"
+    ]
+  }
+}
