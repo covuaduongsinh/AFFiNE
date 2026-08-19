@@ -12,8 +12,9 @@
     { "path": "../../i18n" },
     { "path": "../../native" },
     { "path": "../../../common/nbstore" },
-    { "path": "../../../common/infra" },
     { "path": "../../../../blocksuite/chess/core" },
-    { "path": "../../../../blocksuite/chess/engine" }
+    { "path": "../../../../blocksuite/chess/engine" },
+    { "path": "../../../chess/sync" },
+    { "path": "../../../common/infra" }
   ]
 }

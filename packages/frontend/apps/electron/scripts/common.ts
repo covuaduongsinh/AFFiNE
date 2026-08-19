@@ -87,7 +87,15 @@ export const config = (): BuildOptions => {
     bundle: true,
     target: `node${NODE_MAJOR_VERSION}`,
     platform: 'node',
-    external: ['electron', 'electron-updater', 'yjs', 'semver'],
+    external: [
+      'electron',
+      'electron-updater',
+      'yjs',
+      'semver',
+      '@electric-sql/pglite',
+      '@electric-sql/pglite/nodefs',
+      '@node-rs/argon2',
+    ],
     format: 'cjs',
     loader: {
       '.node': 'copy',

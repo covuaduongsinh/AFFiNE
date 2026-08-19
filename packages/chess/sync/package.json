@@ -1,0 +1,32 @@
+{
+  "name": "@chess/sync",
+  "version": "0.27.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./server": "./src/server.ts"
+  },
+  "bin": {
+    "chess-sync": "./src/cli.ts"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.3.4",
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/cors": "^11.0.1",
+    "@fastify/multipart": "^9.0.3",
+    "@node-rs/argon2": "^2.0.2",
+    "drizzle-orm": "^0.44.4",
+    "fastify": "^5.4.0",
+    "graphql": "^16.11.0",
+    "graphql-yoga": "^5.13.4",
+    "jose": "^6.0.11",
+    "nanoid": "^5.1.6",
+    "socket.io": "^4.8.3",
+    "yjs": "^13.6.27"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.3",
+    "vitest": "^4.1.8"
+  }
+}

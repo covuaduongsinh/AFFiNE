@@ -1,0 +1,160 @@
+import cookie from '@fastify/cookie';
+import cors from '@fastify/cors';
+import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
+import { createSchema, createYoga } from 'graphql-yoga';
+
+import { registerAuthRoutes } from './auth/routes.js';
+import { resolveUser } from './auth/session.js';
+import { registerBlobRoutes } from './blob/routes.js';
+import { type ChessSyncConfig,loadConfig } from './config.js';
+import { openDatabase } from './db/client.js';
+import { errorBody, HttpError } from './errors.js';
+import { createResolvers } from './graphql/resolvers.js';
+import { typeDefs } from './graphql/schema.js';
+import { attachSocket } from './sync/socket.js';
+import type { AppState, GqlContext } from './types.js';
+
+export interface ChessSyncHandle {
+  baseUrl: string;
+  port: number;
+  close(): Promise<void>;
+}
+
+export async function startChessSync(
+  options: Partial<ChessSyncConfig> = {}
+): Promise<ChessSyncHandle> {
+  const config = loadConfig(options);
+  const db = await openDatabase(config.dataDir, config.jwtSecret);
+  const state: AppState = {
+    db,
+    host: config.host,
+    port: config.port,
+    baseUrl: `http://${config.host}:${config.port}`,
+  };
+
+  const app = Fastify({ logger: false, bodyLimit: 104857600 });
+  await app.register(cookie);
+  await app.register(cors, { origin: true, credentials: true });
+
+  app.get('/health', async () => ({ ok: true, version: '0.27.0' }));
+
+  await registerAuthRoutes(app, state);
+  registerBlobRoutes(app, state);
+
+  const yoga = createYoga<{ req: FastifyRequest; reply: FastifyReply }>({
+    schema: createSchema({
+      typeDefs,
+      resolvers: createResolvers(),
+    }),
+    graphqlEndpoint: '/graphql',
+    landingPage: false,
+    graphiql: false,
+    maskedErrors: false,
+    context: async ({ req }): Promise<GqlContext> => {
+      const proto =
+        typeof req.headers['x-forwarded-proto'] === 'string'
+          ? req.headers['x-forwarded-proto']
+          : 'http';
+      const host = req.headers.host ?? `${state.host}:${state.port}`;
+      return {
+        app,
+        state,
+        user: await resolveUser(state, req),
+        origin: `${proto}://${host}`,
+      };
+    },
+  });
+
+  app.addContentTypeParser(
+    'multipart/form-data',
+    (_request, _payload, done) => {
+      done(null);
+    }
+  );
+
+  app.route({
+    url: '/graphql',
+    method: ['GET', 'POST', 'OPTIONS'],
+    handler: async (req, reply) => {
+      try {
+        const auth = req.headers.authorization;
+        if (typeof auth === 'string' && auth.startsWith('Bearer ')) {
+          await resolveUser(state, req);
+        }
+      } catch (error) {
+        if (error instanceof HttpError) {
+          return reply.status(error.body.status).send(error.body);
+        }
+        throw error;
+      }
+
+      const url = `http://${req.headers.host ?? '127.0.0.1'}${req.url}`;
+      const headers = new Headers();
+      for (const [key, value] of Object.entries(req.headers)) {
+        if (typeof value === 'string') headers.set(key, value);
+        else if (Array.isArray(value)) {
+          for (const item of value) headers.append(key, item);
+        }
+      }
+
+      const isMultipart = String(req.headers['content-type'] ?? '').includes(
+        'multipart/form-data'
+      );
+      const request = isMultipart
+        ? undefined
+        : new Request(url, {
+            method: req.method,
+            headers,
+            body:
+              req.method === 'GET' || req.method === 'HEAD'
+                ? undefined
+                : JSON.stringify(req.body ?? {}),
+          });
+
+      const response = request
+        ? await yoga.fetch(request, { req, reply })
+        : await yoga.handleNodeRequestAndResponse(req.raw, reply.raw, {
+            req,
+            reply,
+          });
+
+      response.headers.forEach((value, key) => {
+        reply.header(key, value);
+      });
+      reply.status(response.status);
+      reply.send(Buffer.from(await response.arrayBuffer()));
+      return reply;
+    },
+  });
+
+  app.setErrorHandler((error, _request, reply) => {
+    if (error instanceof HttpError) {
+      return reply.status(error.body.status).send(error.body);
+    }
+    app.log.error(error);
+    return reply
+      .status(500)
+      .send(errorBody(500, 'INTERNAL_SERVER_ERROR', error.message));
+  });
+
+  await app.ready();
+  const io = attachSocket(app, state);
+  await app.listen({ host: config.host, port: config.port });
+  const address = app.server.address();
+  const port =
+    typeof address === 'object' && address ? address.port : config.port;
+  state.port = port;
+  state.baseUrl = `http://${config.host === '0.0.0.0' ? '127.0.0.1' : config.host}:${port}`;
+
+  return {
+    baseUrl: state.baseUrl,
+    port,
+    async close() {
+      io.disconnectSockets(true);
+      // oxlint-disable-next-line typescript/no-floating-promises
+      io.close();
+      await app.close();
+      await db.close();
+    },
+  };
+}
