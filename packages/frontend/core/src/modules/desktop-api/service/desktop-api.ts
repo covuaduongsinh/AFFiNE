@@ -55,6 +55,19 @@ export class DesktopApiService extends Service {
   private setupStartListener() {
     this.setupCommonUIEvents();
     this.setupAuthRequestEvent();
+    this.registerLocalSyncServer().catch(error => {
+      console.warn('chess-sync auto-register skipped', error);
+    });
+  }
+
+  private async registerLocalSyncServer() {
+    try {
+      const info = await this.handler.chessSync.info();
+      const serversService = this.framework.get(ServersService);
+      await serversService.addOrGetServerByBaseUrl(info.baseUrl);
+    } catch (error) {
+      console.warn('chess-sync auto-register skipped', error);
+    }
   }
 
   private setupCommonUIEvents() {

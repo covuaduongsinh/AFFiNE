@@ -1156,6 +1156,11 @@ export const PackageList = [
     ],
   },
   {
+    location: 'packages/chess/sync',
+    name: '@chess/sync',
+    workspaceDependencies: [],
+  },
+  {
     location: 'packages/common/auth',
     name: '@affine/auth',
     workspaceDependencies: [],
@@ -1252,6 +1257,9 @@ export const PackageList = [
       'packages/frontend/i18n',
       'packages/frontend/native',
       'packages/common/nbstore',
+      'blocksuite/chess/core',
+      'blocksuite/chess/engine',
+      'packages/chess/sync',
       'packages/common/infra',
     ],
   },
@@ -1351,6 +1359,7 @@ export const PackageList = [
       'blocksuite/chess/block-board',
       'blocksuite/chess/block-game',
       'blocksuite/chess/core',
+      'blocksuite/chess/engine',
       'blocksuite/affine/data-view',
       'blocksuite/framework/global',
       'blocksuite/framework/std',
@@ -1579,6 +1588,7 @@ export type PackageName =
   | '@affine/docs'
   | '@affine/server-native'
   | '@affine/server'
+  | '@chess/sync'
   | '@affine/auth'
   | '@affine/debug'
   | '@affine/env'

@@ -79,7 +79,9 @@ if (process.env.SKIP_ONBOARDING) {
 /**
  * Prevent multiple instances
  */
-const isSingleInstance = app.requestSingleInstanceLock();
+const isSingleInstance =
+  process.env.CHESS_SYNC_ALLOW_MULTI_INSTANCE === '1' ||
+  app.requestSingleInstanceLock();
 if (!isSingleInstance) {
   logger.info(
     'Another instance is running or responding deep link, exiting...'

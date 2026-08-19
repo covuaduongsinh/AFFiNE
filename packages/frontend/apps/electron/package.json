@@ -40,6 +40,7 @@
     "@affine/nbstore": "workspace:*",
     "@blocksuite/chess-core": "workspace:*",
     "@blocksuite/chess-engine": "workspace:*",
+    "@chess/sync": "workspace:*",
     "@electron-forge/cli": "^7.11.1",
     "@electron-forge/core": "^7.11.1",
     "@electron-forge/maker-deb": "^7.11.1",
