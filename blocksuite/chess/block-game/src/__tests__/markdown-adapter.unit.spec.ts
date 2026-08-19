@@ -40,6 +40,39 @@ describe('chess game markdown adapter', () => {
     ).toBe(false);
   });
 
+  it('exports only the PGN fence and drops analysisJson', () => {
+    const opened: unknown[] = [];
+    const walkerContext = {
+      openNode(node: unknown) {
+        opened.push(node);
+        return this;
+      },
+      closeNode() {
+        return this;
+      },
+    };
+    void chessGameMarkdownAdapterMatcher.fromBlockSnapshot.enter?.(
+      {
+        node: {
+          props: {
+            pgn: '1. e4 e5 *',
+            analysisJson: '{"secret":true}',
+          },
+        },
+      } as never,
+      { walkerContext } as never
+    );
+    expect(opened).toEqual([
+      {
+        type: 'code',
+        lang: 'pgn',
+        meta: null,
+        value: '1. e4 e5 *',
+      },
+    ]);
+    expect(JSON.stringify(opened)).not.toContain('secret');
+  });
+
   it('matches its own blocks on the way out and nothing else', () => {
     expect(
       chessGameMarkdownAdapterMatcher.fromMatch(blockNode('affine:chess-game'))
@@ -57,7 +90,9 @@ describe('chess game schema', () => {
       pgn: EMPTY_PGN,
       currentPath: [],
       orientation: 'white',
+      analysisJson: '',
     });
+    expect(ChessGameBlockSchema.version).toBe(1);
   });
 
   it('parses its own default PGN', () => {

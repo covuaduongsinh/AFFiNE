@@ -1044,6 +1044,44 @@ export const PackageList = [
     ],
   },
   {
+    location: 'blocksuite/chess/block-board',
+    name: '@blocksuite/chess-block-board',
+    workspaceDependencies: [
+      'blocksuite/affine/components',
+      'blocksuite/affine/ext-loader',
+      'blocksuite/affine/shared',
+      'blocksuite/affine/widgets/slash-menu',
+      'blocksuite/chess/core',
+      'blocksuite/framework/global',
+      'blocksuite/framework/std',
+      'blocksuite/framework/store',
+    ],
+  },
+  {
+    location: 'blocksuite/chess/block-game',
+    name: '@blocksuite/chess-block-game',
+    workspaceDependencies: [
+      'blocksuite/affine/components',
+      'blocksuite/affine/ext-loader',
+      'blocksuite/affine/shared',
+      'blocksuite/affine/widgets/slash-menu',
+      'blocksuite/chess/core',
+      'blocksuite/framework/global',
+      'blocksuite/framework/std',
+      'blocksuite/framework/store',
+    ],
+  },
+  {
+    location: 'blocksuite/chess/core',
+    name: '@blocksuite/chess-core',
+    workspaceDependencies: [],
+  },
+  {
+    location: 'blocksuite/chess/engine',
+    name: '@blocksuite/chess-engine',
+    workspaceDependencies: ['blocksuite/chess/core'],
+  },
+  {
     location: 'blocksuite/docs',
     name: '@blocksuite/bs-docs',
     workspaceDependencies: [],
@@ -1310,6 +1348,9 @@ export const PackageList = [
       'blocksuite/affine/blocks/root',
       'blocksuite/affine/components',
       'blocksuite/affine/shared',
+      'blocksuite/chess/block-board',
+      'blocksuite/chess/block-game',
+      'blocksuite/chess/core',
       'blocksuite/affine/data-view',
       'blocksuite/framework/global',
       'blocksuite/framework/std',
@@ -1523,6 +1564,10 @@ export type PackageName =
   | '@blocksuite/affine-widget-slash-menu'
   | '@blocksuite/affine-widget-toolbar'
   | '@blocksuite/affine-widget-viewport-overlay'
+  | '@blocksuite/chess-block-board'
+  | '@blocksuite/chess-block-game'
+  | '@blocksuite/chess-core'
+  | '@blocksuite/chess-engine'
   | '@blocksuite/bs-docs'
   | '@blocksuite/docs'
   | '@blocksuite/global'

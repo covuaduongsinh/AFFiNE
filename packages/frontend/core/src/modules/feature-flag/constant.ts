@@ -304,6 +304,24 @@ export const AFFINE_FLAGS = {
     configurable: isMobile,
     defaultState: false,
   },
+  enable_chess_engine: {
+    category: 'affine',
+    displayName:
+      'com.affine.settings.workspace.experimental-features.enable-chess-engine.name',
+    description:
+      'com.affine.settings.workspace.experimental-features.enable-chess-engine.description',
+    configurable: true,
+    defaultState: true,
+  },
+  enable_chess_coach: {
+    category: 'affine',
+    displayName:
+      'com.affine.settings.workspace.experimental-features.enable-chess-coach.name',
+    description:
+      'com.affine.settings.workspace.experimental-features.enable-chess-coach.description',
+    configurable: true,
+    defaultState: true,
+  },
   enable_pdfmake_export: {
     category: 'blocksuite',
     bsFlag: 'enable_pdfmake_export',

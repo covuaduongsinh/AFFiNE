@@ -62,6 +62,7 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import type { Subscription } from 'rxjs';
 
+import { ChessCoachPanel } from '../../../../blocksuite/view-extensions/chess/coach-panel';
 import { PageNotFound } from '../../404';
 import * as styles from './detail-page.css';
 import { DetailPageHeader } from './detail-page-header';
@@ -119,6 +120,9 @@ const DetailPageImpl = memo(function DetailPageImpl() {
   );
   const enableViewAnalyticsPanel = useLiveData(
     featureFlagService.flags.enable_view_analytics_panel.$
+  );
+  const enableChessCoach = useLiveData(
+    featureFlagService.flags.enable_chess_coach.$
   );
 
   const serverService = useService(ServerService);
@@ -374,6 +378,15 @@ const DetailPageImpl = memo(function DetailPageImpl() {
           unmountOnInactive={false}
         >
           <EditorChatPanel editor={editorContainer} doc={doc.blockSuiteDoc} />
+        </ViewSidebarTab>
+      )}
+
+      {enableChessCoach && (
+        <ViewSidebarTab
+          tabId="chess-coach"
+          icon={<span data-testid="chess-coach-tab-icon">♟</span>}
+        >
+          <ChessCoachPanel />
         </ViewSidebarTab>
       )}
 

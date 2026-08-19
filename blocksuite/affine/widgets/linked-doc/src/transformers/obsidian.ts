@@ -26,10 +26,13 @@ import {
   type ImportFolder,
 } from './import-batch.js';
 import {
+  applySnapshotTitle,
   bindImportedAssetsToJob,
   createMarkdownImportJob,
+  FRONTMATTER_KEYS,
   getProvider,
   isSystemImportPath,
+  type ParsedFrontmatterMeta,
   parseFrontmatter,
   stageImportedAsset,
 } from './markdown.js';
@@ -72,6 +75,28 @@ const AMBIGUOUS_PAGE_LOOKUP = '__ambiguous__';
 const DEFAULT_CALLOUT_EMOJI = '💡';
 const OBSIDIAN_TEXT_FOOTNOTE_URL_PREFIX = 'data:text/plain;charset=utf-8,';
 const OBSIDIAN_ATTACHMENT_EMBED_TAG = 'obsidian-attachment';
+
+/**
+ * Only these keys become AFFiNE tags. The shared front matter map also reads
+ * `categories`/`keywords` as tags, but in a vault those hold wikilinks to real
+ * notes, so they are kept as body links instead.
+ */
+const OBSIDIAN_TAG_KEYS = ['tags', 'tag'];
+
+/** Keys the doc meta already carries, so the body must not repeat them. */
+const OBSIDIAN_HANDLED_FRONTMATTER_KEYS = new Set([
+  ...FRONTMATTER_KEYS.title,
+  ...FRONTMATTER_KEYS.created,
+  ...FRONTMATTER_KEYS.updated,
+  ...FRONTMATTER_KEYS.favorite,
+  ...FRONTMATTER_KEYS.trash,
+  ...OBSIDIAN_TAG_KEYS,
+]);
+
+/** Dropbox leaves these conflict copies next to notes it could not sync. */
+const OBSIDIAN_TEMP_FILE_RE = /\.tmp\.\d+\.[0-9a-f]+$/i;
+const OBSIDIAN_APP_CONFIG_SUFFIX = '.obsidian/app.json';
+const OBSIDIAN_DEFAULT_BATCH_SIZE = 25;
 
 function normalizeLookupKey(value: string): string {
   return normalizeFilePathReference(value).toLowerCase();
@@ -307,10 +332,26 @@ function buildLookupKeys(
   return Array.from(keys).map(normalizeLookupKey);
 }
 
+/**
+ * How directly a key names a note. A vault that holds both `Chess.md` and
+ * `♟️ Chess.md` would otherwise make "chess" ambiguous and leave every
+ * `[[Chess]]` as plain text, even though one note is named exactly that.
+ */
+const LOOKUP_RANK = {
+  path: 0,
+  fileName: 1,
+  declaredTitle: 2,
+  strippedTitle: 3,
+} as const;
+
+type LookupRank = (typeof LOOKUP_RANK)[keyof typeof LOOKUP_RANK];
+type PageLookupEntry = { pageId: string; rank: LookupRank };
+
 function registerPageLookup(
-  pageLookupMap: Map<string, string>,
+  pageLookupMap: Map<string, PageLookupEntry>,
   key: string,
-  pageId: string
+  pageId: string,
+  rank: LookupRank
 ) {
   const normalizedKey = normalizeLookupKey(key);
   if (!normalizedKey) {
@@ -318,12 +359,26 @@ function registerPageLookup(
   }
 
   const existing = pageLookupMap.get(normalizedKey);
-  if (existing && existing !== pageId) {
-    pageLookupMap.set(normalizedKey, AMBIGUOUS_PAGE_LOOKUP);
+  if (!existing || rank < existing.rank) {
+    pageLookupMap.set(normalizedKey, { pageId, rank });
+    return;
+  }
+  if (rank > existing.rank || existing.pageId === pageId) {
     return;
   }
 
-  pageLookupMap.set(normalizedKey, pageId);
+  // Two notes claim the key just as directly - the link stays literal.
+  pageLookupMap.set(normalizedKey, { pageId: AMBIGUOUS_PAGE_LOOKUP, rank });
+}
+
+function flattenPageLookup(
+  pageLookupMap: ReadonlyMap<string, PageLookupEntry>
+): Map<string, string> {
+  const flattened = new Map<string, string>();
+  for (const [key, entry] of pageLookupMap) {
+    flattened.set(key, entry.pageId);
+  }
+  return flattened;
 }
 
 function resolvePageIdFromLookup(
@@ -753,6 +808,12 @@ export type ImportObsidianVaultOptions = {
   schema: Schema;
   importedFiles: File[];
   extensions: ExtensionType[];
+  /**
+   * How many docs each emitted batch carries. A real vault holds hundreds of
+   * notes, and committing them one batch at a time keeps the main thread
+   * responsive and lets the caller report progress and honour a cancel.
+   */
+  batchSize?: number;
 };
 
 export type ImportObsidianVaultResult = {
@@ -775,6 +836,100 @@ function isObsidianConfigPath(path: string): boolean {
   return normalizeFilePathReference(path)
     .split('/')
     .some(segment => segment === '.obsidian');
+}
+
+/**
+ * Everything a working vault carries that is not the vault: `.git`, plugin
+ * caches such as `.smart-env`, `.trash`, editor state, and Dropbox conflict
+ * copies. The one exception is `.obsidian/app.json`, which the importer reads
+ * to find the attachment folder.
+ *
+ * Callers should apply this before reading file contents - a real vault is
+ * mostly `.git`, and reading it would cost hundreds of megabytes of memory.
+ */
+export function isIgnoredObsidianPath(path: string): boolean {
+  if (isSystemImportPath(path)) return true;
+
+  const normalized = normalizeFilePathReference(path);
+  if (normalized.endsWith(OBSIDIAN_APP_CONFIG_SUFFIX)) return false;
+
+  const segments = normalized.split('/').filter(Boolean);
+  if (segments.some(segment => segment.startsWith('.'))) return true;
+
+  return OBSIDIAN_TEMP_FILE_RE.test(segments.at(-1) ?? '');
+}
+
+function flattenFrontmatterEntries(value: unknown): string[] {
+  if (typeof value === 'string') {
+    return value
+      .split(/[,;]+/)
+      .map(entry => entry.trim())
+      .filter(Boolean);
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap(flattenFrontmatterEntries);
+  }
+  if (value === null || value === undefined || typeof value === 'object') {
+    return [];
+  }
+  return [String(value)];
+}
+
+function normalizeObsidianTag(value: string): string {
+  return value
+    .trim()
+    .replace(/^#/, '')
+    .replace(/^\[\[([^\]]+)\]\]$/, '$1')
+    .trim();
+}
+
+/**
+ * Reads `tags:`/`tag:` front matter. Nested names such as `language/English`
+ * are kept whole - the commit service decides whether to collapse them.
+ */
+function collectObsidianTags(
+  data: Record<string, unknown>
+): string[] | undefined {
+  const tags = new Set<string>();
+  for (const [rawKey, value] of Object.entries(data)) {
+    if (!OBSIDIAN_TAG_KEYS.includes(rawKey.trim().toLowerCase())) continue;
+    for (const entry of flattenFrontmatterEntries(value)) {
+      const tag = normalizeObsidianTag(entry);
+      if (tag) tags.add(tag);
+    }
+  }
+  return tags.size ? Array.from(tags) : undefined;
+}
+
+function renderFrontmatterValue(value: unknown): string {
+  if (typeof value === 'string') return value.trim();
+  if (Array.isArray(value)) {
+    return value.map(renderFrontmatterValue).filter(Boolean).join(', ');
+  }
+  if (value === null || value === undefined || typeof value === 'object') {
+    return '';
+  }
+  return String(value);
+}
+
+/**
+ * AFFiNE has no doc meta for a vault's own keys - `author`, `subjects`,
+ * `categories`, ... - and dropping them would cut the links the vault is
+ * organised by. They are rendered as a list at the top of the note instead, so
+ * the wikilinks inside them resolve to real docs.
+ */
+function renderObsidianProperties(data: Record<string, unknown>): string {
+  const lines: string[] = [];
+  for (const [rawKey, value] of Object.entries(data)) {
+    const key = rawKey.trim();
+    if (!key || OBSIDIAN_HANDLED_FRONTMATTER_KEYS.has(key.toLowerCase())) {
+      continue;
+    }
+    const rendered = renderFrontmatterValue(value);
+    if (!rendered) continue;
+    lines.push(`- **${key}**: ${rendered}`);
+  }
+  return lines.join('\n');
 }
 
 async function getAttachmentFolderPath(importedFiles: File[]) {
@@ -834,25 +989,29 @@ function buildObsidianFolders(
   return folders.size ? Array.from(folders.values()) : undefined;
 }
 
-export async function planObsidianVault({
+/**
+ * Plans a vault as a stream of batches. Everything the wikilink lookup needs -
+ * page ids, emojis, staged assets - is collected up front, because a link may
+ * point at any note in the vault; only snapshot building is chunked.
+ */
+export async function* planObsidianVaultBatches({
   collection,
   schema,
   importedFiles,
   extensions,
-}: ImportObsidianVaultOptions): Promise<PlanObsidianVaultResult> {
+  batchSize = OBSIDIAN_DEFAULT_BATCH_SIZE,
+}: ImportObsidianVaultOptions): AsyncGenerator<ImportBatch> {
   const provider = getProvider([
     obsidianWikilinkToDeltaMatcher,
     obsidianAttachmentEmbedMarkdownAdapterMatcher,
     ...extensions,
   ]);
 
-  const docIds: string[] = [];
-  const docs: ImportDoc[] = [];
   const docEmojis = new Map<string, string>();
   const pendingAssets: AssetMap = new Map();
   const pendingPathBlobIdMap: PathBlobIdMap = new Map();
   const markdownBlobs: MarkdownFileImportEntry[] = [];
-  const pageLookupMap = new Map<string, string>();
+  const pageLookupMap = new Map<string, PageLookupEntry>();
   const importedPaths = importedFiles.map(
     file => file.webkitRelativePath || file.name
   );
@@ -861,30 +1020,66 @@ export async function planObsidianVault({
 
   for (const file of importedFiles) {
     const filePath = file.webkitRelativePath || file.name;
-    if (isSystemImportPath(filePath) || isObsidianConfigPath(filePath)) {
+    if (isIgnoredObsidianPath(filePath) || isObsidianConfigPath(filePath)) {
       continue;
     }
 
     if (file.name.endsWith('.md')) {
       const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
       const markdown = await file.text();
-      const { content, meta } = parseFrontmatter(markdown);
+      const {
+        content: body,
+        meta: parsedMeta,
+        data,
+      } = parseFrontmatter(markdown);
+      const properties = renderObsidianProperties(data);
+      const content = properties
+        ? `${properties}\n\n${body.replace(/^\s+/, '')}`
+        : body;
+      const meta: ParsedFrontmatterMeta = { ...parsedMeta };
+      const tags = collectObsidianTags(data);
+      if (tags) {
+        meta.tags = tags;
+      } else {
+        delete meta.tags;
+      }
 
       const documentTitleCandidate = meta.title ?? fileNameWithoutExt;
       const { title: preferredTitle, emoji: leadingEmoji } =
         extractTitleAndEmoji(documentTitleCandidate);
 
       const newPageId = collection.idGenerator();
-      registerPageLookup(pageLookupMap, filePath, newPageId);
+      registerPageLookup(pageLookupMap, filePath, newPageId, LOOKUP_RANK.path);
       registerPageLookup(
         pageLookupMap,
         stripMarkdownExtension(filePath),
-        newPageId
+        newPageId,
+        LOOKUP_RANK.path
       );
-      registerPageLookup(pageLookupMap, file.name, newPageId);
-      registerPageLookup(pageLookupMap, fileNameWithoutExt, newPageId);
-      registerPageLookup(pageLookupMap, documentTitleCandidate, newPageId);
-      registerPageLookup(pageLookupMap, preferredTitle, newPageId);
+      registerPageLookup(
+        pageLookupMap,
+        file.name,
+        newPageId,
+        LOOKUP_RANK.fileName
+      );
+      registerPageLookup(
+        pageLookupMap,
+        fileNameWithoutExt,
+        newPageId,
+        LOOKUP_RANK.fileName
+      );
+      registerPageLookup(
+        pageLookupMap,
+        documentTitleCandidate,
+        newPageId,
+        LOOKUP_RANK.declaredTitle
+      );
+      registerPageLookup(
+        pageLookupMap,
+        preferredTitle,
+        newPageId,
+        LOOKUP_RANK.strippedTitle
+      );
 
       if (leadingEmoji) {
         docEmojis.set(newPageId, leadingEmoji);
@@ -921,75 +1116,145 @@ export async function planObsidianVault({
       registerPageLookup(
         pageLookupMap,
         existingDocMeta.title,
-        existingDocMeta.id
+        existingDocMeta.id,
+        LOOKUP_RANK.declaredTitle
       );
     }
   }
 
-  await Promise.all(
-    markdownBlobs.map(async markdownFile => {
-      const {
-        fullPath,
-        pageId: predefinedId,
-        preferredTitle,
-        content,
-        meta,
-      } = markdownFile;
+  const pageIdByLookup = flattenPageLookup(pageLookupMap);
 
-      const job = createMarkdownImportJob({
-        collection,
-        schema,
-        preferredTitle,
-        fullPath,
-      });
+  const buildDoc = async (
+    markdownFile: MarkdownFileImportEntry
+  ): Promise<ImportDoc | null> => {
+    const {
+      fullPath,
+      pageId: predefinedId,
+      preferredTitle,
+      content,
+      meta,
+    } = markdownFile;
 
-      for (const [lookupKey, id] of pageLookupMap.entries()) {
-        if (id === AMBIGUOUS_PAGE_LOOKUP) {
-          continue;
-        }
-        job.adapterConfigs.set(`obsidian:pageId:${lookupKey}`, id);
+    const job = createMarkdownImportJob({
+      collection,
+      schema,
+      preferredTitle,
+      fullPath,
+    });
+
+    for (const [lookupKey, id] of pageIdByLookup) {
+      if (id === AMBIGUOUS_PAGE_LOOKUP) {
+        continue;
       }
-      for (const [id, emoji] of docEmojis.entries()) {
-        job.adapterConfigs.set('obsidian:pageEmoji:' + id, emoji);
+      job.adapterConfigs.set(`obsidian:pageId:${lookupKey}`, id);
+    }
+    for (const [id, emoji] of docEmojis.entries()) {
+      job.adapterConfigs.set('obsidian:pageEmoji:' + id, emoji);
+    }
+
+    bindImportedAssetsToJob(job, pendingAssets, pendingPathBlobIdMap);
+
+    const preprocessedMarkdown = preprocessObsidianMarkdown(
+      content,
+      fullPath,
+      pageIdByLookup,
+      assetLookup
+    );
+    const mdAdapter = new MarkdownAdapter(job, provider);
+    const snapshot = await mdAdapter.toDocSnapshot({
+      file: preprocessedMarkdown,
+      assets: job.assetsManager,
+    });
+
+    if (!snapshot) return null;
+
+    snapshot.meta.id = predefinedId;
+    // Without this the page header reads "Untitled" while the sidebar shows the
+    // file name, and editing that header writes "Untitled" over the real title.
+    applySnapshotTitle(snapshot, preferredTitle);
+    return {
+      id: predefinedId,
+      sourcePath: fullPath,
+      snapshot,
+      meta: { ...meta, title: preferredTitle, trash: false },
+    };
+  };
+
+  const blobs = await blobsFromAssets(pendingAssets, pendingPathBlobIdMap);
+  const total = markdownBlobs.length;
+
+  if (total === 0) {
+    yield { docs: [], blobs, progress: { completed: 0, total: 0 }, done: true };
+    return;
+  }
+
+  const size = Math.max(1, batchSize);
+  for (let offset = 0; offset < total; offset += size) {
+    const slice = markdownBlobs.slice(offset, offset + size);
+    const docs = (await Promise.all(slice.map(buildDoc))).filter(
+      (doc): doc is ImportDoc => doc !== null
+    );
+    const sliceIcons = slice
+      .filter(file => docEmojis.has(file.pageId))
+      .map(file => ({
+        docId: file.pageId,
+        icon: {
+          type: 'emoji' as const,
+          unicode: docEmojis.get(file.pageId) as string,
+        },
+      }));
+    const completed = Math.min(offset + size, total);
+
+    yield {
+      docs,
+      // Blobs ride along with the first batch so embeds resolve from the very
+      // first doc that references them.
+      blobs: offset === 0 ? blobs : [],
+      folders: buildObsidianFolders(slice, vaultRoot),
+      icons: sliceIcons,
+      progress: { completed, total },
+      done: completed >= total,
+    };
+  }
+}
+
+/**
+ * Plans the whole vault as a single batch. Kept for callers that commit in one
+ * shot; the import service streams {@link planObsidianVaultBatches} instead.
+ */
+export async function planObsidianVault(
+  options: ImportObsidianVaultOptions
+): Promise<PlanObsidianVaultResult> {
+  const docIds: string[] = [];
+  const docEmojis = new Map<string, string>();
+  const docs: ImportDoc[] = [];
+  const blobs: ImportBatch['blobs'] = [];
+  const folders: ImportFolder[] = [];
+  const icons: NonNullable<ImportBatch['icons']> = [];
+
+  for await (const batch of planObsidianVaultBatches(options)) {
+    for (const doc of batch.docs) {
+      docs.push(doc);
+      docIds.push(doc.id);
+    }
+    blobs.push(...batch.blobs);
+    folders.push(...(batch.folders ?? []));
+    for (const icon of batch.icons ?? []) {
+      icons.push(icon);
+      if (icon.icon.type === 'emoji') {
+        docEmojis.set(icon.docId, icon.icon.unicode);
       }
-
-      bindImportedAssetsToJob(job, pendingAssets, pendingPathBlobIdMap);
-
-      const preprocessedMarkdown = preprocessObsidianMarkdown(
-        content,
-        fullPath,
-        pageLookupMap,
-        assetLookup
-      );
-      const mdAdapter = new MarkdownAdapter(job, provider);
-      const snapshot = await mdAdapter.toDocSnapshot({
-        file: preprocessedMarkdown,
-        assets: job.assetsManager,
-      });
-
-      if (snapshot) {
-        snapshot.meta.id = predefinedId;
-        docs.push({
-          id: predefinedId,
-          snapshot,
-          meta: { ...meta, title: preferredTitle, trash: false },
-        });
-        docIds.push(predefinedId);
-      }
-    })
-  );
+    }
+  }
 
   return {
     docIds,
     docEmojis,
     batch: {
       docs,
-      blobs: await blobsFromAssets(pendingAssets, pendingPathBlobIdMap),
-      folders: buildObsidianFolders(markdownBlobs, vaultRoot),
-      icons: Array.from(docEmojis, ([docId, emoji]) => ({
-        docId,
-        icon: { type: 'emoji', unicode: emoji },
-      })),
+      blobs,
+      folders: folders.length ? folders : undefined,
+      icons,
       done: true,
     },
   };
@@ -997,4 +1262,5 @@ export async function planObsidianVault({
 
 export const ObsidianTransformer = {
   planObsidianVault,
+  planObsidianVaultBatches,
 };

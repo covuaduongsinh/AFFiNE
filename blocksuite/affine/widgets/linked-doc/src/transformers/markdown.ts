@@ -40,7 +40,7 @@ export type ParsedFrontmatterMeta = Partial<
   >
 >;
 
-const FRONTMATTER_KEYS = {
+export const FRONTMATTER_KEYS = {
   title: ['title', 'name'],
   created: [
     'created',
@@ -290,22 +290,28 @@ function buildMetaFromFrontmatter(
 export function parseFrontmatter(markdown: string): {
   content: string;
   meta: ParsedFrontmatterMeta;
+  /**
+   * The raw front matter mapping. Importers that want to keep keys AFFiNE has
+   * no doc meta for - Obsidian's `author`, `subjects`, ... - read it from here.
+   */
+  data: Record<string, unknown>;
 } {
   try {
     const parsed = parseMatter(markdown);
     if (!parsed) {
-      return { content: markdown, meta: {} };
+      return { content: markdown, meta: {}, data: {} };
     }
     const content = parsed.body ?? markdown;
 
     if (Array.isArray(parsed.metadata)) {
-      return { content: String(content), meta: {} };
+      return { content: String(content), meta: {}, data: {} };
     }
 
-    const meta = buildMetaFromFrontmatter({ ...parsed.metadata });
-    return { content: String(content), meta };
+    const data = { ...parsed.metadata } as Record<string, unknown>;
+    const meta = buildMetaFromFrontmatter(data);
+    return { content: String(content), meta, data };
   } catch {
-    return { content: markdown, meta: {} };
+    return { content: markdown, meta: {}, data: {} };
   }
 }
 
@@ -445,7 +451,7 @@ function prepareNotionMarkdownFile({
   };
 }
 
-function applySnapshotTitle(snapshot: DocSnapshot, title: string) {
+export function applySnapshotTitle(snapshot: DocSnapshot, title: string) {
   snapshot.meta.title = title;
   snapshot.blocks.props.title = {
     '$blocksuite:internal:text$': true,

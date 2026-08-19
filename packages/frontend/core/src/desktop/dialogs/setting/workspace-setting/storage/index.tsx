@@ -10,6 +10,7 @@ import { useLiveData, useService } from '@toeverything/infra';
 import { EnableCloudPanel } from '../preference/enable-cloud';
 import { BlobManagementPanel } from './blob-management';
 import { DesktopExportPanel } from './export';
+import { WebExportPanel } from './export-web';
 import { WorkspaceQuotaPanel } from './workspace-quota';
 
 export const WorkspaceSettingStorage = ({
@@ -35,9 +36,13 @@ export const WorkspaceSettingStorage = ({
       {workspace.flavour === 'local' ? (
         <>
           <EnableCloudPanel onCloseSetting={onCloseSetting} />{' '}
-          {BUILD_CONFIG.isElectron && (
+          {BUILD_CONFIG.isElectron ? (
             <SettingWrapper>
               <DesktopExportPanel workspace={workspace} />
+            </SettingWrapper>
+          ) : (
+            <SettingWrapper>
+              <WebExportPanel workspace={workspace} />
             </SettingWrapper>
           )}
         </>
@@ -49,11 +54,16 @@ export const WorkspaceSettingStorage = ({
             </SettingWrapper>
           ) : null}
 
-          {BUILD_CONFIG.isElectron && canExport && (
-            <SettingWrapper>
-              <DesktopExportPanel workspace={workspace} />
-            </SettingWrapper>
-          )}
+          {canExport &&
+            (BUILD_CONFIG.isElectron ? (
+              <SettingWrapper>
+                <DesktopExportPanel workspace={workspace} />
+              </SettingWrapper>
+            ) : (
+              <SettingWrapper>
+                <WebExportPanel workspace={workspace} />
+              </SettingWrapper>
+            ))}
 
           <SettingWrapper>
             <BlobManagementPanel />

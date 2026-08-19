@@ -29,8 +29,10 @@ describe('detectChessText: positions', () => {
   });
 
   it('rejects a FEN-shaped string that is not a legal position', () => {
-    // Eight ranks, but no kings.
-    expect(detectChessText('8/8/8/8/8/8/8/8 w - - 0 1')).toBeNull();
+    // Eight ranks, but the first one describes nine files. (A king-less
+    // placement is no longer a rejection: printed diagrams legitimately omit
+    // kings, so those now parse — see diagram-fen.unit.spec.ts.)
+    expect(detectChessText('9/8/8/8/8/8/8/8 w - - 0 1')).toBeNull();
   });
 
   it('rejects a placement with the wrong rank count', () => {

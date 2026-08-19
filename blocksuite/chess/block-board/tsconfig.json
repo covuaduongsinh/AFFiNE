@@ -7,11 +7,11 @@
   },
   "include": ["./src"],
   "references": [
-    { "path": "../core" },
     { "path": "../../affine/components" },
     { "path": "../../affine/ext-loader" },
     { "path": "../../affine/shared" },
     { "path": "../../affine/widgets/slash-menu" },
+    { "path": "../core" },
     { "path": "../../framework/global" },
     { "path": "../../framework/std" },
     { "path": "../../framework/store" }

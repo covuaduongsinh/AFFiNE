@@ -5,6 +5,8 @@ import {
   AFFINE_EVENT_SUBSCRIBE_CHANNEL_NAME,
 } from '../shared/type';
 import { applicationMenuEvents } from './application-menu';
+import { chessCoachEvents } from './chess-coach/events';
+import { chessEngineEvents } from './chess-engine/events';
 import { beforeAppQuit } from './cleanup';
 import { logger } from './logger';
 import { powerEvents } from './power';
@@ -23,6 +25,8 @@ export const allEvents = {
   recording: recordingEvents,
   popup: popupEvents,
   power: powerEvents,
+  chessEngine: chessEngineEvents,
+  chessCoach: chessCoachEvents,
 };
 
 const subscriptions = new Map<number, Set<string>>();

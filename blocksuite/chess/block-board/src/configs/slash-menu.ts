@@ -2,7 +2,7 @@ import { isInsideBlockByFlavour } from '@blocksuite/affine-shared/utils';
 import type { SlashMenuConfig } from '@blocksuite/affine-widget-slash-menu';
 import { START_FEN } from '@blocksuite/chess-core';
 import { TableIcon } from '@blocksuite/icons/lit';
-import type { BlockModel } from '@blocksuite/store';
+import { type BlockModel, Text } from '@blocksuite/store';
 
 import type { BoardOrientation } from '../model.js';
 
@@ -30,6 +30,53 @@ function insertBoardAfter(model: BlockModel, options: InsertOptions = {}) {
     },
     parent,
     index + 1
+  );
+}
+
+/**
+ * Insert the skeleton of a lesson exercise after `model`: a fixed diagram,
+ * the question, and the answer behind a collapsed heading.
+ *
+ * Building this by hand is four separate steps every single time, and the
+ * step most often skipped is the one that matters — hiding the answer, so the
+ * student meets the position before the solution.
+ *
+ * A collapsed heading is what hides it. `affine:list` still accepts a
+ * `toggle` type but the model marks it deprecated; a heading collapses its
+ * following siblings instead, and travels to Markdown as a plain heading, so
+ * the exercise survives a trip back out to Obsidian.
+ */
+function insertExerciseAfter(model: BlockModel) {
+  const { store } = model;
+  const parent = store.getParent(model);
+  if (!parent) return;
+
+  const index = parent.children.indexOf(model);
+  if (index === -1) return;
+
+  store.addBlock(
+    'affine:chess-board',
+    { fen: START_FEN, orientation: 'white', editable: false },
+    parent,
+    index + 1
+  );
+  store.addBlock(
+    'affine:paragraph',
+    { type: 'text', text: new Text('Câu hỏi: ') },
+    parent,
+    index + 2
+  );
+  store.addBlock(
+    'affine:paragraph',
+    { type: 'h4', text: new Text('Đáp án'), collapsed: true },
+    parent,
+    index + 3
+  );
+  store.addBlock(
+    'affine:paragraph',
+    { type: 'text', text: new Text('Lời giải: ') },
+    parent,
+    index + 4
   );
 }
 
@@ -68,6 +115,15 @@ export const chessBoardSlashMenuConfig: SlashMenuConfig = {
       group: '4_Content & Media@8',
       when: ({ model }) => notInEdgelessText(model),
       action: ({ model }) => insertBoardAfter(model, { fen: KINGS_ONLY_FEN }),
+    },
+    {
+      name: 'Chess exercise',
+      description: 'Insert a diagram, a question and a hidden answer.',
+      icon: TableIcon(),
+      searchAlias: ['exercise', 'bai tap', 'cau hoi', 'dap an', 'puzzle'],
+      group: '4_Content & Media@9',
+      when: ({ model }) => notInEdgelessText(model),
+      action: ({ model }) => insertExerciseAfter(model),
     },
   ],
 };

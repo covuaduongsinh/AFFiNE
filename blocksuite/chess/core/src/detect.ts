@@ -1,4 +1,4 @@
-import { parseFen } from './fen.js';
+import { parseDiagramFen } from './fen.js';
 import { parsePgn } from './pgn.js';
 
 /**
@@ -47,7 +47,9 @@ export function detectChessText(raw: string): ChessTextMatch {
 
   if (looksLikeFen(text)) {
     try {
-      parseFen(text);
+      // Diagram parse: king-less positions are legitimate printed diagrams
+      // (pawn structures, material skeletons) and still paste as boards.
+      parseDiagramFen(text);
       return { kind: 'fen', fen: text };
     } catch {
       // Fall through: a near-miss FEN is not a game either.

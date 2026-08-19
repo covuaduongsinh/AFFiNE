@@ -394,6 +394,7 @@ __metadata:
     "@blocksuite/chess-block-board": "workspace:*"
     "@blocksuite/chess-block-game": "workspace:*"
     "@blocksuite/chess-core": "workspace:*"
+    "@blocksuite/chess-engine": "workspace:*"
     "@blocksuite/data-view": "workspace:*"
     "@blocksuite/global": "workspace:*"
     "@blocksuite/icons": "npm:^2.2.17"
@@ -555,6 +556,8 @@ __metadata:
     "@affine/i18n": "workspace:*"
     "@affine/native": "workspace:*"
     "@affine/nbstore": "workspace:*"
+    "@blocksuite/chess-core": "workspace:*"
+    "@blocksuite/chess-engine": "workspace:*"
     "@electron-forge/cli": "npm:^7.11.1"
     "@electron-forge/core": "npm:^7.11.1"
     "@electron-forge/maker-deb": "npm:^7.11.1"
@@ -3356,6 +3359,15 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@blocksuite/chess-core@workspace:blocksuite/chess/core"
   dependencies:
+    vitest: "npm:^4.1.8"
+  languageName: unknown
+  linkType: soft
+
+"@blocksuite/chess-engine@workspace:*, @blocksuite/chess-engine@workspace:blocksuite/chess/engine":
+  version: 0.0.0-use.local
+  resolution: "@blocksuite/chess-engine@workspace:blocksuite/chess/engine"
+  dependencies:
+    "@blocksuite/chess-core": "workspace:*"
     vitest: "npm:^4.1.8"
   languageName: unknown
   linkType: soft

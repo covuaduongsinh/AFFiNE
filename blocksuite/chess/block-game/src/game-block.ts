@@ -1,5 +1,6 @@
 import { CaptionedBlockComponent } from '@blocksuite/affine-components/caption';
 import { BlockSelection } from '@blocksuite/std';
+import { RANGE_SYNC_EXCLUDE_ATTR } from '@blocksuite/std/inline';
 import { css, html } from 'lit';
 
 import type { ChessGameBlockModel } from './model.js';
@@ -46,6 +47,22 @@ export class ChessGameBlockComponent extends CaptionedBlockComponent<ChessGameBl
     return this.selection
       .filter(BlockSelection)
       .some(selection => selection.blockId === this.model.id);
+  }
+
+  /**
+   * Opt out of the editor's native-selection syncing, the way the database
+   * block does.
+   *
+   * `RangeBinding` watches `selectionchange` on the document and treats any
+   * selection without an inline-text endpoint as stray: it removes the range
+   * and ends up calling `document.activeElement.blur()`. A caret inside this
+   * block's PGN box or comment field is exactly such a selection, so without
+   * this attribute the editor takes the caret back moments after a click
+   * grants it.
+   */
+  override connectedCallback() {
+    super.connectedCallback();
+    this.setAttribute(RANGE_SYNC_EXCLUDE_ATTR, 'true');
   }
 
   /**

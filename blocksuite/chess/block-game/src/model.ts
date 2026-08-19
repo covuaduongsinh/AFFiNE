@@ -22,6 +22,13 @@ export interface ChessGameProps {
   currentPath: number[];
   orientation: BoardOrientation;
   caption: string;
+  /**
+   * JSON game scan from the last engine pass, or `''`.
+   *
+   * Overlay only: Markdown export and the PGN stay untouched until the author
+   * applies. Additive — do not bump schema version for this field.
+   */
+  analysisJson: string;
 }
 
 /** An empty game: no headers, no moves, result undetermined. */
@@ -34,6 +41,7 @@ export const ChessGameBlockSchema = defineBlockSchema({
     currentPath: [],
     orientation: 'white',
     caption: '',
+    analysisJson: '',
   }),
   metadata: {
     version: 1,

@@ -6,6 +6,7 @@ import { style } from '@vanilla-extract/css';
 export const container = style({
   display: 'flex',
   flexWrap: 'wrap',
+  alignItems: 'stretch',
   gap: 16,
   padding: 16,
   backgroundColor: cssVarV2('layer/background/primary'),
@@ -20,20 +21,29 @@ export const container = style({
 export const boardColumn = style({
   flex: `1 1 ${BOARD_SIZE}px`,
   minWidth: 240,
-  maxWidth: BOARD_SIZE,
+  maxWidth: BOARD_SIZE + 28,
   display: 'flex',
   flexDirection: 'column',
   gap: 8,
 });
 
+export const boardWithEval = style({
+  display: 'flex',
+  flexDirection: 'row',
+  alignItems: 'flex-start',
+  gap: 6,
+});
+
 export const sideColumn = style({
   flex: '1 1 260px',
-  minWidth: 220,
+  minWidth: 240,
   display: 'flex',
   flexDirection: 'column',
   gap: 8,
-  // Long games must scroll inside the block rather than stretch the document.
-  maxHeight: 420,
+  // Cap at the board+controls height when the columns sit side by side so
+  // Analyze stays on screen with the pieces. No min-height: a short game
+  // must not leave a blank band above the tools.
+  maxHeight: BOARD_SIZE + 40,
 });
 
 export const header = style({
@@ -78,10 +88,11 @@ export const controlButton = style({
 });
 
 export const moveList = style({
-  flex: 1,
+  flex: '1 1 auto',
+  minHeight: 0,
   overflowY: 'auto',
   fontSize: cssVar('fontSm'),
-  lineHeight: 1.7,
+  lineHeight: 1.75,
   color: cssVarV2('text/primary'),
   wordBreak: 'break-word',
 });
@@ -115,6 +126,15 @@ export const comment = style({
   color: cssVarV2('text/secondary'),
   fontStyle: 'italic',
   margin: '0 4px',
+});
+
+export const evalGlyph = style({
+  display: 'inline-block',
+  fontStyle: 'normal',
+  fontSize: cssVar('fontXs'),
+  fontVariantNumeric: 'tabular-nums',
+  color: cssVarV2('text/secondary'),
+  margin: '0 2px',
 });
 
 export const variation = style({
@@ -207,6 +227,7 @@ export const primaryButton = style({
 export const annotations = style({
   display: 'flex',
   flexDirection: 'column',
+  flexShrink: 0,
   gap: 6,
   paddingTop: 8,
   borderTop: `1px solid ${cssVarV2('layer/insideBorder/border')}`,
@@ -258,4 +279,55 @@ export const commentInput = style({
 
 export const dangerButton = style({
   color: cssVarV2('status/error'),
+});
+
+export const analysis = style({
+  display: 'flex',
+  flexDirection: 'column',
+  flexShrink: 0,
+  gap: 6,
+  paddingTop: 8,
+  borderTop: `1px solid ${cssVarV2('layer/insideBorder/border')}`,
+  fontSize: cssVar('fontXs'),
+  color: cssVarV2('text/secondary'),
+});
+
+export const analysisRow = style({
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 4,
+  alignItems: 'center',
+});
+
+export const analysisPv = style({
+  fontVariantNumeric: 'tabular-nums',
+  color: cssVarV2('text/primary'),
+  wordBreak: 'break-word',
+  maxHeight: '4.4em',
+  overflowY: 'auto',
+});
+
+export const progress = style({
+  height: 4,
+  borderRadius: 2,
+  backgroundColor: cssVarV2('layer/insideBorder/border'),
+  overflow: 'hidden',
+});
+
+export const progressFill = style({
+  height: '100%',
+  backgroundColor: cssVarV2('button/primary'),
+});
+
+export const moveInaccuracy = style({
+  color: cssVarV2('status/warning'),
+});
+
+export const moveMistake = style({
+  color: '#d97706',
+});
+
+export const moveBlunder = style({
+  color: cssVarV2('status/error'),
+  fontWeight: 600,
 });

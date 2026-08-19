@@ -1,5 +1,6 @@
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer, request as httpRequest } from 'node:http';
+import { connect as netConnect } from 'node:net';
 import { extname, join, normalize, resolve } from 'node:path';
 
 /**
@@ -56,7 +57,7 @@ if (!existsSync(join(ROOT, 'index.html'))) {
 
 const [apiHost, apiPort] = API_ORIGIN.split(':');
 
-createServer((req, res) => {
+const server = createServer((req, res) => {
   const url = decodeURIComponent((req.url ?? '/').split('?')[0]);
 
   if (isApi(url)) {
@@ -99,7 +100,34 @@ createServer((req, res) => {
     'cache-control': 'no-cache',
   });
   createReadStream(file).pipe(res);
-}).listen(PORT, () => {
+});
+
+// Sync opens a WebSocket. Without this the handshake never reaches the backend
+// and socket.io falls back to long polling, which works but keeps a request in
+// flight at all times — exactly what the antivirus proxy handles worst.
+server.on('upgrade', (req, socket, head) => {
+  if (!isApi(decodeURIComponent((req.url ?? '/').split('?')[0]))) {
+    socket.destroy();
+    return;
+  }
+
+  const upstream = netConnect(Number(apiPort), apiHost, () => {
+    let handshake = `${req.method} ${req.url} HTTP/1.1\r\n`;
+    for (let i = 0; i < req.rawHeaders.length; i += 2) {
+      handshake += `${req.rawHeaders[i]}: ${req.rawHeaders[i + 1]}\r\n`;
+    }
+    upstream.write(`${handshake}\r\n`);
+    if (head?.length) {
+      upstream.write(head);
+    }
+    socket.pipe(upstream).pipe(socket);
+  });
+
+  upstream.on('error', () => socket.destroy());
+  socket.on('error', () => upstream.destroy());
+});
+
+server.listen(PORT, () => {
   console.log(`serving ${ROOT}`);
   console.log(`  ->  http://localhost:${PORT}/`);
 });

@@ -1,3 +1,5 @@
+import type { ImportWarning } from '@blocksuite/affine/widgets/linked-doc';
+
 export type WebImportLimits = {
   maxTotalBytes: number;
   maxEntryBytes: number;
@@ -12,6 +14,19 @@ export const webImportLimits: WebImportLimits = {
   maxEntryCount: 1000,
   maxNestedZipDepth: 0,
   maxDocumentCount: 250,
+};
+
+/**
+ * A vault is a folder of small markdown files, not one archive the browser has
+ * to hold in memory at once, and it routinely holds more than 250 notes. The
+ * per-file ceiling stays: a single blob that big is still a bad idea on web.
+ */
+export const obsidianWebImportLimits: WebImportLimits = {
+  maxTotalBytes: 128 * 1024 * 1024,
+  maxEntryBytes: 8 * 1024 * 1024,
+  maxEntryCount: 5000,
+  maxNestedZipDepth: 0,
+  maxDocumentCount: 2000,
 };
 
 export class WebImportLimitError extends Error {
@@ -102,6 +117,42 @@ export async function preflightWebFilesImport(
       'This import has too many documents for the web app. Please import it in the desktop client.'
     );
   }
+}
+
+/**
+ * Drops the entries a web import cannot take - files over the per-entry limit
+ * and nested zips - and reports them, instead of failing a whole folder import
+ * over a single stray file.
+ */
+export function filterWebImportFiles(
+  files: File[],
+  limits = webImportLimits
+): { files: File[]; warnings: ImportWarning[] } {
+  const kept: File[] = [];
+  const warnings: ImportWarning[] = [];
+
+  for (const file of files) {
+    const sourcePath = file.webkitRelativePath || file.name;
+    if (file.size > limits.maxEntryBytes) {
+      warnings.push({
+        code: 'file-too-large',
+        message: `Skipped ${sourcePath}: file is too large for the web app.`,
+        sourcePath,
+      });
+      continue;
+    }
+    if (sourcePath.toLowerCase().endsWith('.zip')) {
+      warnings.push({
+        code: 'nested-zip',
+        message: `Skipped ${sourcePath}: nested zips are not imported on the web app.`,
+        sourcePath,
+      });
+      continue;
+    }
+    kept.push(file);
+  }
+
+  return { files: kept, warnings };
 }
 
 function isWebImportDocument(path: string) {

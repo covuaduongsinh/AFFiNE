@@ -16,9 +16,22 @@ const isHtmlNode = (node: MarkdownAST): node is Html => node.type === 'html';
 const isCodeOrHtmlNode = (node: MarkdownAST): node is Code | Html =>
   isCodeNode(node) || isHtmlNode(node);
 
+/**
+ * Fence langs owned by the chess blocks. The markdown walker runs every
+ * matching adapter — there is no first-match-wins — so without this exclusion
+ * each chess fence would import as a chess block AND a duplicate code block.
+ */
+const CHESS_FENCE_LANGS = new Set(['chessboard', 'fen', 'pgn']);
+
 export const codeBlockMarkdownAdapterMatcher: BlockMarkdownAdapterMatcher = {
   flavour: CodeBlockSchema.model.flavour,
-  toMatch: o => isCodeOrHtmlNode(o.node),
+  toMatch: o =>
+    isCodeOrHtmlNode(o.node) &&
+    !(
+      isCodeNode(o.node) &&
+      o.node.lang != null &&
+      CHESS_FENCE_LANGS.has(o.node.lang)
+    ),
   fromMatch: o => o.node.flavour === 'affine:code',
   toBlockSnapshot: {
     enter: (o, context) => {

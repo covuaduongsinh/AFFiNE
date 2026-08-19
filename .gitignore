@@ -97,6 +97,14 @@ af.cmd
 storageState.json
 /.understand-anything
 
+# self-hosted server state: postgres data, blob storage, generated config
+/.docker/selfhost/data/
+/.docker/selfhost/config/
+
+# Vendored Arasan binaries (scripts/fetch-arasan.mjs)
+packages/frontend/apps/electron/resources/arasan/*.exe
+packages/frontend/apps/electron/resources/arasan/*.nnue
+
 # local test/browser artifacts
 /.playwright-browsers/
 **/.vitest-attachments/

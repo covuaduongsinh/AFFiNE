@@ -1,7 +1,8 @@
+import './ignore-stdio-epipe';
+
 import path from 'node:path';
 
-import * as Sentry from '@sentry/electron/main';
-import { IPCMode } from '@sentry/electron/main';
+import type * as SentrySdk from '@sentry/electron/main';
 import { app, protocol } from 'electron';
 
 import { createApplicationMenu } from './application-menu/create';
@@ -122,11 +123,14 @@ app
   .catch(e => console.error('Failed create window:', e));
 
 if (process.env.SENTRY_RELEASE) {
-  // https://docs.sentry.io/platforms/javascript/guides/electron/
+  // Import only when reporting: the SDK reads `app.getAppPath()` at module
+  // load, which throws in a local `electron .` session without a release.
+  // oxlint-disable-next-line typescript/no-var-requires
+  const Sentry = require('@sentry/electron/main') as typeof SentrySdk;
   Sentry.init({
     dsn: process.env.SENTRY_DSN,
     environment: process.env.BUILD_TYPE ?? 'development',
-    ipcMode: IPCMode.Protocol,
+    ipcMode: Sentry.IPCMode.Protocol,
     transportOptions: {
       maxAgeDays: 30,
       maxQueueSize: 100,

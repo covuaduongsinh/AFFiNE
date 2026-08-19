@@ -26,6 +26,12 @@ type CommitServiceOptions = {
   organizeService?: OrganizeService;
   explorerIconService?: ExplorerIconService;
   tagService?: TagService;
+  /**
+   * Keep `language/English` as one tag instead of collapsing it to its root.
+   * Bear ships nested tags as a hierarchy AFFiNE flattens; an Obsidian vault
+   * uses the whole path as the name, and the leaf is the part that matters.
+   */
+  preserveNestedTagNames?: boolean;
   logger: Logger;
 };
 
@@ -283,7 +289,9 @@ export class ImportCommitService {
         { displayName: string; docs: Set<string> }
       >();
       for (const [tagName, tagDocIds] of tags) {
-        const originalRoot = tagName.split('/')[0];
+        const originalRoot = this.options.preserveNestedTagNames
+          ? tagName
+          : tagName.split('/')[0];
         const key = originalRoot.toLowerCase();
         let entry = rootTagDocMap.get(key);
         if (!entry) {

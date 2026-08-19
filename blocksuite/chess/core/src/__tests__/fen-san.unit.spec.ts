@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { FenError, parseFen, START_FEN, startPosition, toFen } from '../fen';
 import { applyMove, findMove, legalMoves } from '../position';
-import { moveToSan, moveToUci, SanError, sanToMove } from '../san';
+import { moveToSan, moveToUci, SanError, sanToMove, uciToMove } from '../san';
 import { algebraicToSquare, squareToAlgebraic } from '../square';
 import { CASTLE_WK, CASTLE_WQ, QUEEN, typeOf } from '../types';
 
@@ -124,6 +124,29 @@ describe('SAN special moves', () => {
     const position = startPosition();
     expect(moveToSan(position, sanToMove(position, 'e2e4'))).toBe('e4');
     expect(moveToUci(sanToMove(position, 'e4'))).toBe('e2e4');
+  });
+
+  it('resolves UCI tokens and rejects SAN', () => {
+    const position = startPosition();
+    expect(moveToUci(uciToMove(position, 'e2e4'))).toBe('e2e4');
+    expect(moveToSan(position, uciToMove(position, 'g1f3'))).toBe('Nf3');
+    expect(() => uciToMove(position, 'e4')).toThrow(SanError);
+    expect(() => uciToMove(position, 'Nf3')).toThrow(SanError);
+    expect(() => uciToMove(position, 'e2e5')).toThrow(SanError);
+  });
+
+  it('round-trips castling, en passant and promotions through UCI', () => {
+    const castle = parseFen('4k3/8/8/8/8/8/8/4K2R w K - 0 1');
+    expect(moveToUci(uciToMove(castle, 'e1g1'))).toBe('e1g1');
+
+    const ep = parseFen(
+      'rnbqkbnr/pppp1ppp/8/3Pp3/8/8/PPP1PPPP/RNBQKBNR w KQkq e6 0 3'
+    );
+    expect(moveToSan(ep, uciToMove(ep, 'd5e6'))).toBe('dxe6');
+
+    const promo = parseFen('4k3/P7/8/8/8/8/8/4K3 w - - 0 1');
+    expect(moveToSan(promo, uciToMove(promo, 'a7a8q'))).toBe('a8=Q+');
+    expect(() => uciToMove(promo, 'a7a8')).toThrow(SanError);
   });
 
   it('handles en passant capture', () => {
