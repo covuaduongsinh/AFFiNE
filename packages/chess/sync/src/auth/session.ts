@@ -102,6 +102,29 @@ export function mapUser(row: {
   };
 }
 
+/**
+ * Resolves the user behind a live session id.
+ *
+ * Both ways in end here: the cookie carries the session id directly, and an
+ * access token carries it as `sid`. Keeping the lookup in one place is what
+ * lets a socket accept either without repeating the expiry check.
+ */
+export async function userFromSessionId(
+  state: AppState,
+  sessionId: string
+): Promise<UserRow | null> {
+  const [session] = await state.db.db
+    .select()
+    .from(sessions)
+    .where(and(eq(sessions.id, sessionId), gt(sessions.expiresAt, new Date())));
+  if (!session) return null;
+  const [user] = await state.db.db
+    .select()
+    .from(users)
+    .where(eq(users.id, session.userId));
+  return user ? mapUser(user) : null;
+}
+
 export async function resolveUser(
   state: AppState,
   request: FastifyRequest
@@ -126,14 +149,5 @@ export async function resolveUser(
   }
   const sessionId = request.cookies?.affine_session;
   if (!sessionId) return null;
-  const [session] = await state.db.db
-    .select()
-    .from(sessions)
-    .where(and(eq(sessions.id, sessionId), gt(sessions.expiresAt, new Date())));
-  if (!session) return null;
-  const [user] = await state.db.db
-    .select()
-    .from(users)
-    .where(eq(users.id, session.userId));
-  return user ? mapUser(user) : null;
+  return await userFromSessionId(state, sessionId);
 }

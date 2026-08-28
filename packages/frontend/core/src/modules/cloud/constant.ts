@@ -207,6 +207,13 @@ const OFFICIAL_TELEMETRY_ENDPOINTS: Record<TelemetryChannel, string> = {
 export function getOfficialTelemetryEndpoint(
   channel = BUILD_CONFIG.appBuildType
 ): string {
+  if (environment.isSelfHosted) {
+    // A self-hosted deployment is one someone runs so that nothing leaves
+    // their machine, and these endpoints are all AFFiNE's. An empty endpoint
+    // makes the telemetry manager stop before it builds a request rather than
+    // send one somewhere else and retry it forever.
+    return '';
+  }
   if (BUILD_CONFIG.debug) {
     return BUILD_CONFIG.isNative
       ? OFFICIAL_TELEMETRY_ENDPOINTS.local

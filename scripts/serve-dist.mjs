@@ -24,6 +24,17 @@ const ROOT = resolve(process.env.DIST_DIR ?? 'packages/frontend/apps/web/dist');
 const PORT = Number(process.env.PORT ?? process.argv[2] ?? 5173);
 const API_ORIGIN = process.env.API_ORIGIN ?? '127.0.0.1:3010';
 
+/**
+ * The build emits two entry documents over the same bundle. `selfhost.html`
+ * carries `<meta name="env:isSelfHosted">`, and that one tag is what makes the
+ * app treat the origin it was served from as a self-hosted server rather than
+ * AFFiNE Cloud: it becomes the default server, it stops advertising features
+ * this backend does not implement, and socket.io is allowed to fall back to
+ * long polling. Every backend in this repo is self-hosted, so that is the right
+ * default. Set APP_HTML=index.html to serve the cloud entry instead.
+ */
+const APP_HTML = process.env.APP_HTML ?? 'selfhost.html';
+
 const TYPES = {
   '.css': 'text/css; charset=utf-8',
   '.html': 'text/html; charset=utf-8',
@@ -49,8 +60,8 @@ const isApi = url =>
   url.startsWith('/graphql') ||
   url.startsWith('/socket.io');
 
-if (!existsSync(join(ROOT, 'index.html'))) {
-  console.error(`No build found at ${ROOT}`);
+if (!existsSync(join(ROOT, APP_HTML))) {
+  console.error(`No build found at ${join(ROOT, APP_HTML)}`);
   console.error('Run:  PUBLIC_PATH=/ yarn affine build -p web');
   process.exit(1);
 }
@@ -85,15 +96,15 @@ const server = createServer((req, res) => {
     return;
   }
 
-  // Everything else is a static asset, falling back to index.html so the
-  // client-side router owns the URL space.
+  // Everything else is a static asset, falling back to the entry document so
+  // the client-side router owns the URL space.
   const candidate = normalize(join(ROOT, url));
   const file =
     candidate.startsWith(ROOT) &&
     existsSync(candidate) &&
     statSync(candidate).isFile()
       ? candidate
-      : join(ROOT, 'index.html');
+      : join(ROOT, APP_HTML);
 
   res.writeHead(200, {
     'content-type': TYPES[extname(file)] ?? 'application/octet-stream',

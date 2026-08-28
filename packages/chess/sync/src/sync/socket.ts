@@ -1,8 +1,10 @@
+import cookie from '@fastify/cookie';
 import { and, eq, ilike, or, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { Server, type Socket } from 'socket.io';
 import * as Y from 'yjs';
 
+import { userFromSessionId } from '../auth/session.js';
 import { verifyAccessToken } from '../crypto.js';
 import { inviteLinks, members, users } from '../db/schema.js';
 import type { AppState, UserRow } from '../types.js';
@@ -51,15 +53,34 @@ function awareRoom(spaceType: string, spaceId: string, docId: string) {
   return `aware:${spaceType}:${spaceId}:${docId}`;
 }
 
+/**
+ * `join` and `leave` return a promise with a clustered adapter and plain
+ * `void` with the in-memory one we run. Calling `.catch` on the result is a
+ * crash waiting for the first client that uses awareness, so normalise it
+ * where the caller only wants fire-and-forget.
+ */
+function ignoreResult(result: Promise<void> | void) {
+  void Promise.resolve(result).catch(() => {});
+}
+
+/**
+ * A browser cannot put a token in the handshake. Web sign-in hands out a
+ * session cookie and nothing else, and that cookie is httpOnly precisely so
+ * the page cannot read it back out to pass along here. What the page can do
+ * is connect to its own origin, and then the handshake carries the cookie by
+ * itself. Native clients keep using the token, which is their only option
+ * from a different origin.
+ */
 async function userFromSocket(state: AppState, socket: Socket) {
   const auth = socket.handshake.auth as { token?: string };
-  if (!auth?.token) return null;
-  const claims = await verifyAccessToken(state.db.jwtSecret, auth.token);
-  const [user] = await state.db.db
-    .select()
-    .from(users)
-    .where(eq(users.id, claims.sub));
-  return user ?? null;
+  if (auth?.token) {
+    const claims = await verifyAccessToken(state.db.jwtSecret, auth.token);
+    return await userFromSessionId(state, claims.sid);
+  }
+  const header = socket.handshake.headers.cookie;
+  if (!header) return null;
+  const sessionId = cookie.parse(header).affine_session;
+  return sessionId ? await userFromSessionId(state, sessionId) : null;
 }
 
 function quotaState(now: Date, extra: Record<string, unknown>) {
@@ -284,16 +305,8 @@ export function attachSocket(app: FastifyInstance, state: AppState) {
   });
 
   io.use((socket, next) => {
-    const auth = socket.handshake.auth as {
-      token?: string;
-      tokenType?: string;
-    };
-    if (!auth?.token) {
-      next(new Error('UNAUTHORIZED'));
-      return;
-    }
-    verifyAccessToken(state.db.jwtSecret, auth.token)
-      .then(() => next())
+    userFromSocket(state, socket)
+      .then(user => next(user ? undefined : new Error('UNAUTHORIZED')))
       .catch(() => next(new Error('UNAUTHORIZED')));
   });
 
@@ -322,9 +335,7 @@ export function attachSocket(app: FastifyInstance, state: AppState) {
     });
 
     socket.on('space:leave', payload => {
-      socket
-        .leave(spaceRoom(payload.spaceType, payload.spaceId))
-        .catch(() => {});
+      ignoreResult(socket.leave(spaceRoom(payload.spaceType, payload.spaceId)));
     });
 
     socket.on('space:load-doc', async (payload, ack) => {
@@ -417,9 +428,11 @@ export function attachSocket(app: FastifyInstance, state: AppState) {
     });
 
     socket.on('space:join-awareness', (payload, ack) => {
-      socket
-        .join(awareRoom(payload.spaceType, payload.spaceId, payload.docId))
-        .catch(() => {});
+      ignoreResult(
+        socket.join(
+          awareRoom(payload.spaceType, payload.spaceId, payload.docId)
+        )
+      );
       ackData(ack, { clientId: socket.id });
       io.to(awareRoom(payload.spaceType, payload.spaceId, payload.docId)).emit(
         'space:collect-awareness',
@@ -432,9 +445,11 @@ export function attachSocket(app: FastifyInstance, state: AppState) {
     });
 
     socket.on('space:leave-awareness', payload => {
-      socket
-        .leave(awareRoom(payload.spaceType, payload.spaceId, payload.docId))
-        .catch(() => {});
+      ignoreResult(
+        socket.leave(
+          awareRoom(payload.spaceType, payload.spaceId, payload.docId)
+        )
+      );
       awareness.delete(socket.id);
     });
 

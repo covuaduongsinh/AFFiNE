@@ -4,6 +4,7 @@ import * as Y from 'yjs';
 
 import {
   gql,
+  signInCookie,
   signInNative,
   startTestServer,
   stopTestServer,
@@ -18,6 +19,19 @@ function connect(baseUrl: string, token: string): Promise<Socket> {
   });
   socket.once('connect', () => resolve(socket));
   socket.once('connect_error', reject);
+  return promise;
+}
+function connectWithCookie(baseUrl: string, cookies: string): Promise<Socket> {
+  const { promise, resolve, reject } = Promise.withResolvers<Socket>();
+  const socket = io(baseUrl, {
+    transports: ['polling', 'websocket'],
+    extraHeaders: cookies ? { cookie: cookies } : {},
+  });
+  socket.once('connect', () => resolve(socket));
+  socket.once('connect_error', error => {
+    socket.close();
+    reject(error);
+  });
   return promise;
 }
 function ack<T>(socket: Socket, event: string, payload: unknown): Promise<T> {
@@ -123,5 +137,71 @@ describe('space sync', () => {
     const fresh = new Y.Doc();
     Y.applyUpdate(fresh, Buffer.from(loaded.missing, 'base64'));
     expect(fresh.getMap('map').get('k')).toBe('v');
+  });
+
+  it('accepts a handshake carrying only the session cookie', async () => {
+    server = await startTestServer();
+    const { baseUrl } = server.handle;
+    // The browser signs in this way and never sees a token: the session
+    // cookie is httpOnly, so the page cannot put one in `auth`.
+    const { cookies } = await signInCookie(
+      baseUrl,
+      'web@sync.test',
+      'password1'
+    );
+    const created = await gql<{ createWorkspace: { id: string } }>(
+      baseUrl,
+      `mutation { createWorkspace { id } }`,
+      undefined,
+      { cookies }
+    );
+    const spaceId = created.data!.createWorkspace.id;
+
+    const socket = await connectWithCookie(baseUrl, cookies);
+    sockets.push(socket);
+    const joined = await ack<{ clientId: string }>(socket, 'space:join', {
+      spaceType: 'workspace',
+      spaceId,
+    });
+    expect(joined.clientId).toBeTruthy();
+  });
+
+  it('survives awareness join and leave', async () => {
+    // `socket.join` returns void with the in-memory adapter, so calling
+    // `.catch` on it took the whole server down the first time a browser
+    // opened a doc. No native client had ever sent these events.
+    server = await startTestServer();
+    const { baseUrl } = server.handle;
+    const a = await signInNative(baseUrl, 'aware@sync.test', 'password1');
+    const created = await gql<{ createWorkspace: { id: string } }>(
+      baseUrl,
+      `mutation { createWorkspace { id } }`,
+      undefined,
+      { token: a.accessToken }
+    );
+    const spaceId = created.data!.createWorkspace.id;
+    const socket = await connect(baseUrl, a.accessToken);
+    sockets.push(socket);
+
+    const payload = { spaceType: 'workspace', spaceId, docId: 'doc-1' };
+    const joined = await ack<{ clientId: string }>(
+      socket,
+      'space:join-awareness',
+      payload
+    );
+    expect(joined.clientId).toBeTruthy();
+    socket.emit('space:leave-awareness', payload);
+    socket.emit('space:leave', { spaceType: 'workspace', spaceId });
+
+    // If any of those killed the process, this never comes back.
+    const res = await fetch(`${baseUrl}/health`);
+    expect(await res.json()).toEqual({ ok: true, version: '0.27.0' });
+  });
+
+  it('rejects a handshake with neither token nor cookie', async () => {
+    server = await startTestServer();
+    await expect(
+      connectWithCookie(server.handle.baseUrl, '')
+    ).rejects.toThrow();
   });
 });

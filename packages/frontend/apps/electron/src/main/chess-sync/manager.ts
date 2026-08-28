@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { type ChessSyncHandle,startChessSync } from '@chess/sync';
+import { type ChessSyncHandle, startChessSync } from '@chess/sync';
 import { app } from 'electron';
 
 import { logger } from '../logger';
@@ -14,6 +14,15 @@ class ChessSyncManager {
   private starting: Promise<ChessSyncHandle> | null = null;
 
   async ensureStarted(): Promise<{ baseUrl: string }> {
+    // Pointed at a backend someone else is running — a shared one on the LAN,
+    // or the same one a browser client uses. Starting our own as well would
+    // put half the user's data in a database nobody looks at, and both would
+    // show up in the server list looking equally local.
+    const external = process.env.CHESS_SYNC_URL;
+    if (external) {
+      logger.info('chess-sync external', external);
+      return { baseUrl: external.replace(/\/$/, '') };
+    }
     if (this.handle) {
       return { baseUrl: this.handle.baseUrl };
     }
