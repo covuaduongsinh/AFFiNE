@@ -64,7 +64,36 @@ Hàng tuần, hoặc sau mỗi đợt soạn bài lớn:
      node --import tsx packages/chess/sync/src/cli.ts
    ```
 
-   Đạt khi `/health` trả về đúng và đăng nhập lại được bằng tài khoản cũ — đăng nhập được chứng minh cả bảng người dùng lẫn `jwt-secret` đều đã về.
+   Đạt khi `/health` trả về đúng, và:
+
+   ```bash
+   curl -s -X POST localhost:3011/api/auth/preflight \
+     -H 'content-type: application/json' -d '{"email":"email-cua-anh@gmail.com"}'
+   ```
+
+   trả `"registered":true`. Đây mới là phép thử sắc: nó chứng minh dòng tài khoản sống sót qua bản
+   sao lưu, mà không tạo thêm gì. Thử kèm một email chưa từng có để chắc nó không gật bừa — phải
+   ra `"registered":false`.
+
+## Sao lưu tự động lên Google Drive hoặc Dropbox
+
+Đây là chỗ Drive và Dropbox thuộc về: nơi cất bản sao lưu, không phải nơi đồng bộ. `rclone` nói
+được cả hai.
+
+Cấu hình một lần bằng `rclone config`: tạo remote `gdrive` (hoặc `dropbox`), rồi tạo tiếp một
+remote kiểu `crypt` bọc lên nó. **Bọc mã hoá là bắt buộc** — gói sao lưu chứa `jwt-secret` và toàn
+bộ hash mật khẩu, không nên để Google giữ bản đọc được.
+
+Script và bộ hẹn giờ có sẵn ở `deploy/backup-chess-sync.sh`, `deploy/chess-backup.timer`. Nó dừng
+service, chép nguội, bật lại, kiểm tra file nén, rồi đẩy lên. Có bẫy `trap` để nếu bước nén hay
+tải lên hỏng thì server vẫn được bật lại — không có nó, một lần sao lưu lỗi lúc 3 giờ sáng nghĩa
+là server nằm im tới khi có người phát hiện.
+
+Với cơ sở dữ liệu 28 MB, khoảng dừng chỉ vài giây, mà các máy khách đều local-first nên vẫn gõ
+được trong lúc đó. **Không cần** đổi sang Postgres thật chỉ để sao lưu mà khỏi dừng.
+
+Mỗi tháng khôi phục thử một lần theo đúng mục trên. Một bản sao lưu chưa từng khôi phục chỉ là
+một giả thuyết.
 
 ## Nếu cần quay lại trạng thái cũ
 

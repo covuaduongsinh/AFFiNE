@@ -2,7 +2,10 @@
 
 Bản web mặc định là local-first: workspace nằm trong IndexedDB của một trình duyệt, một máy. Tài liệu này mô tả cách chạy nó với backend `@chess/sync` để có đăng nhập, đồng bộ nhiều máy, và dữ liệu nằm trên đĩa của mình — không phụ thuộc cloud AFFiNE.
 
-Sao lưu và khôi phục nằm ở [an-toan-du-lieu.md](an-toan-du-lieu.md). Kiến trúc backend nằm ở [p4-ket-qua-ban-giao.md](p4-ket-qua-ban-giao.md).
+Tài liệu này mô tả cách chạy trên máy của anh. Dựng lên VPS thì xem
+[../deploy/README.md](../deploy/README.md). Sao lưu và khôi phục nằm ở
+[an-toan-du-lieu.md](an-toan-du-lieu.md). Kiến trúc backend nằm ở
+[p4-ket-qua-ban-giao.md](p4-ket-qua-ban-giao.md).
 
 ## Hai tiến trình
 
@@ -59,9 +62,28 @@ Khi đó Electron bỏ qua server nhúng và đăng ký thẳng địa chỉ nà
 
 Lưu ý: server chung sẽ **không** trở thành server mặc định trong app — phải chọn tay ở bộ chọn workspace. Đó là do phía client cứng id server mặc định, không phải lỗi cấu hình.
 
-## Mở ra mạng: cần biết trước khi làm
+## Mở ra mạng: nợ bảo mật phải trả trước
 
-Với `CHESS_SYNC_HOST=0.0.0.0`, ai vào được cổng 3010 cũng có thể tạo tài khoản không giới hạn và tải lên tới 100 MB mỗi lần, tức là làm đầy đĩa. Họ **không** đọc được workspace có sẵn — quyền thành viên được kiểm ở mỗi lần vào không gian. Nhưng chỉ nên mở trong mạng nội bộ tin cậy, hoặc chặn thêm một lớp xác thực ở phía trước.
+Có hai lỗ chưa vá, và cả hai chỉ nguy hiểm khi server với tới được từ ngoài. Chừng nào còn một
+lớp xác thực đứng trước (mật khẩu ở Caddy, hoặc VPN) thì chưa ai khai thác được. **Đừng gỡ lớp đó
+trước khi vá xong hai mục đầu.**
+
+| # | Lỗ | Ở đâu |
+| - | -- | ----- |
+| 1 | **Ghi file tuỳ ý.** `setBlob` lấy thẳng tên file client gửi làm khoá rồi ghép vào đường dẫn không kiểm tra. Tên chứa `../../` ghi ra ngoài cây blob, tới bất cứ đâu tiến trình có quyền | `graphql/resolvers.ts:684`, `blob/store.ts:9-11` |
+| 2 | **Đăng nhập chính là đăng ký.** Không allowlist, không admin, không xác minh email. Dùng một mình thì một danh sách một dòng đóng gần hết rủi ro | `auth/routes.ts:126-144` |
+| 3 | **`ctx.origin` đọc từ header client gửi** và bị ghi vào cơ sở dữ liệu qua `uploadAvatar`. Sai một lần là có `http://` nằm vĩnh viễn trong dữ liệu, trình duyệt chặn vì nội dung hỗn hợp. Hiện `blobs/` còn rỗng nên chưa có URL nào bị ghi hỏng — vá trước khi tải ảnh đại diện đầu tiên là thoát hẳn | `server.ts:53-64`, `resolvers.ts:807` |
+| 4 | Cookie phiên thiếu `secure`; CORS `origin: true` phản chiếu mọi origin kèm credentials | `auth/session.ts:26-29`, `server.ts:37` |
+| 5 | Không có giới hạn tần suất ở đâu cả. Argon2 chạy mỗi lần thử đăng nhập là đòn bẩy CPU | toàn bộ package |
+
+Nếu sau này vá mục 4 bằng danh sách CORS cụ thể, **phải kèm cả origin của Electron** (`assets://.`
+và `assets://another-host`, xem `packages/frontend/apps/electron/src/shared/internal-origin.ts`),
+nếu không app desktop mất khả năng đăng nhập.
+
+Còn một điều không phải lỗ nhưng nên biết: dữ liệu tài liệu đi qua cột `bytea`, và
+`db/schema.ts:18-20` trả `Uint8Array` cho driver. PGlite nhận được, nhưng node-postgres chỉ nhận
+diện `Buffer` — nên nếu có ngày đổi sang Postgres thật mà quên sửa chỗ này, dữ liệu hỏng âm thầm
+chứ không báo lỗi.
 
 ## Rủi ro đã biết: schema không có migration
 

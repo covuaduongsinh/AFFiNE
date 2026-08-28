@@ -1,0 +1,8 @@
+[Unit]
+Description=Cold backup of chess-sync to Drive/Dropbox
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/chess-backup.sh
+# The script stops and starts chess-sync, so it needs root.
+User=root

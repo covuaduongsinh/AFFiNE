@@ -1,0 +1,41 @@
+# Front door for the self-hosted stack. Replace sync.example.vn with your domain.
+#
+# Caddy replaces scripts/serve-dist.mjs here. That script sets no-cache on every
+# asset and does not compress — fine over localhost, painful over a VPS link
+# where it means refetching ~35 MB of JavaScript on every reload. It stays the
+# right tool for local development; it is the wrong one for a server.
+
+sync.example.vn {
+	encode zstd gzip
+
+	# The app's account-creation and upload paths are not hardened yet: signing
+	# in creates the account, and setBlob trusts the client's filename. Until
+	# those land, this password is the only thing between them and the internet.
+	# Generate the hash with:  caddy hash-password
+	basic_auth {
+		chess $2a$14$REPLACE_WITH_YOUR_OWN_HASH
+	}
+
+	@api path /api/* /graphql /graphql/* /socket.io/*
+	handle @api {
+		# reverse_proxy handles the WebSocket upgrade with no extra config, and
+		# overwrites X-Forwarded-Proto with the real scheme.
+		reverse_proxy 127.0.0.1:3010
+	}
+
+	handle {
+		root * /srv/affine-web
+		# selfhost.html, not index.html. It is the entry document carrying
+		# <meta name="env:isSelfHosted">, which is what makes the app treat this
+		# origin as its server instead of AFFiNE Cloud.
+		try_files {path} /selfhost.html
+		file_server
+	}
+
+	# Asset filenames carry a content hash, so they can be cached forever. The
+	# entry document must not be, or a deploy never reaches anyone.
+	header /js/* Cache-Control "public, max-age=31536000, immutable"
+	header /assets/* Cache-Control "public, max-age=31536000, immutable"
+	header /fonts/* Cache-Control "public, max-age=31536000, immutable"
+	header /selfhost.html Cache-Control "no-cache"
+}

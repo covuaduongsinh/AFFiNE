@@ -1,0 +1,39 @@
+[Unit]
+Description=chess-sync (AFFiNE self-hosted backend)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=chess
+Group=chess
+WorkingDirectory=/opt/chess-sync
+# `--import tsx` runs the loader in-process. The `tsx` CLI would spawn node as
+# a child, putting one more hop between systemd's SIGTERM and the handler in
+# cli.ts that closes PGlite.
+ExecStart=/usr/bin/node --import tsx /opt/chess-sync/src/cli.ts
+
+Environment=NODE_ENV=production
+# Only the reverse proxy reaches the backend.
+Environment=CHESS_SYNC_HOST=127.0.0.1
+Environment=CHESS_SYNC_PORT=3010
+# Absolute. cli.ts resolves against the working directory, and a wrong guess
+# opens an empty database that looks exactly like total data loss.
+Environment=CHESS_SYNC_DATA_DIR=/var/lib/chess-sync
+
+Restart=on-failure
+RestartSec=3
+KillSignal=SIGTERM
+KillMode=mixed
+# cli.ts gives PGlite 10 seconds to flush before it force-exits. systemd has to
+# be more patient than that, or SIGKILL lands in the middle of a write.
+TimeoutStopSec=25
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/chess-sync
+
+[Install]
+WantedBy=multi-user.target

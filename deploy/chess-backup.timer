@@ -1,0 +1,11 @@
+[Unit]
+Description=Nightly cold backup of chess-sync to Drive/Dropbox
+
+[Timer]
+OnCalendar=*-*-* 03:15
+# Run on next boot if the machine was off at 03:15, rather than skipping a day.
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
