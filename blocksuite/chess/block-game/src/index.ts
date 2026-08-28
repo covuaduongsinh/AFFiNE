@@ -1,4 +1,5 @@
 export { chessGameMarkdownAdapterMatcher } from './adapters/markdown.js';
+export { chessGamePdfAdapterMatcher } from './adapters/pdf.js';
 export { effects } from './effects.js';
 export { ChessGameBlockComponent } from './game-block.js';
 export {

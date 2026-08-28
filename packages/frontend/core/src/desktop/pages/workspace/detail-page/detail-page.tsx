@@ -63,6 +63,7 @@ import { useParams } from 'react-router-dom';
 import type { Subscription } from 'rxjs';
 
 import { ChessCoachPanel } from '../../../../blocksuite/view-extensions/chess/coach-panel';
+import { ChessLibraryPanel } from '../../../../blocksuite/view-extensions/chess/library-panel';
 import { PageNotFound } from '../../404';
 import * as styles from './detail-page.css';
 import { DetailPageHeader } from './detail-page-header';
@@ -123,6 +124,9 @@ const DetailPageImpl = memo(function DetailPageImpl() {
   );
   const enableChessCoach = useLiveData(
     featureFlagService.flags.enable_chess_coach.$
+  );
+  const enableChessPedagogy = useLiveData(
+    featureFlagService.flags.enable_chess_pedagogy.$
   );
 
   const serverService = useService(ServerService);
@@ -387,6 +391,15 @@ const DetailPageImpl = memo(function DetailPageImpl() {
           icon={<span data-testid="chess-coach-tab-icon">♟</span>}
         >
           <ChessCoachPanel />
+        </ViewSidebarTab>
+      )}
+
+      {enableChessPedagogy && (
+        <ViewSidebarTab
+          tabId="chess-library"
+          icon={<span data-testid="chess-library-tab-icon">♟</span>}
+        >
+          <ChessLibraryPanel />
         </ViewSidebarTab>
       )}
 

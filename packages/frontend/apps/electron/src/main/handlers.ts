@@ -5,6 +5,7 @@ import { AFFINE_API_CHANNEL_NAME } from '../shared/type';
 import { authHandlers } from './auth/handlers';
 import { byokStorageHandlers } from './byok-storage/handlers';
 import { chessCoachHandlers } from './chess-coach/handlers';
+import { chessEngineHandlers } from './chess-engine/handlers';
 import { chessSyncHandlers } from './chess-sync/handlers';
 import { clipboardHandlers } from './clipboard';
 import { configStorageHandlers } from './config-storage';

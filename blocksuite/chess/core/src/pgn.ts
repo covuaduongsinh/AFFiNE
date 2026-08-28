@@ -316,6 +316,32 @@ export function parsePgnGames(text: string): Game[] {
     .map(parseSingleGame);
 }
 
+export type PgnImportSkip = { index: number; error: string };
+export type PgnImportResult = { games: Game[]; skipped: PgnImportSkip[] };
+
+/**
+ * Parse every game in a PGN file, collecting illegal chunks instead of aborting.
+ * Empty chunks are dropped. A file with no games and no skips returns empty lists.
+ */
+export function importPgnGames(text: string): PgnImportResult {
+  const games: Game[] = [];
+  const skipped: PgnImportSkip[] = [];
+  const chunks = splitGames(text);
+  for (let index = 0; index < chunks.length; index++) {
+    const chunk = chunks[index];
+    if (chunk.trim() === '') continue;
+    try {
+      games.push(parseSingleGame(chunk));
+    } catch (error) {
+      skipped.push({
+        index,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+  return { games, skipped };
+}
+
 /** Parse the first game in a PGN file. */
 export function parsePgn(text: string): Game {
   const games = parsePgnGames(text);

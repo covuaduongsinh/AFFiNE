@@ -7,6 +7,14 @@
  * assumed. Everything above it (SAN, PGN, the move tree) is built on that base.
  */
 
+export {
+  BOARD_SVG_PALETTE,
+  type BoardSvgArrow,
+  type BoardSvgHighlight,
+  type BoardSvgOptions,
+  type BoardSvgPalette,
+  fenToSvg,
+} from './board-svg.js';
 export { type ChessTextMatch, detectChessText } from './detect.js';
 export {
   deleteFrom,
@@ -28,6 +36,14 @@ export {
   toFen,
 } from './fen.js';
 export {
+  captionFromHeaders,
+  formatMovePreview,
+  lichessExportUrl,
+  type LichessRef,
+  lichessUserGamesUrl,
+  parseLichessRef,
+} from './import.js';
+export {
   back,
   childrenAt,
   countMoves,
@@ -41,12 +57,20 @@ export {
   walk,
 } from './move-tree.js';
 export {
+  importPgnGames,
   parsePgn,
   parsePgnGames,
   PgnError,
+  type PgnImportResult,
+  type PgnImportSkip,
   serializePgn,
   serializePgnGames,
 } from './pgn.js';
+export {
+  PIECE_SHAPES,
+  PIECE_VIEWBOX_SIZE,
+  type PieceLetter,
+} from './piece-shapes.js';
 export {
   applyMove,
   findMove,

@@ -232,6 +232,10 @@ export function useAFFiNEI18N(): {
       */
     ["Export to Markdown"](): string;
     /**
+      * `Export to PDF`
+      */
+    ["Export to PDF"](): string;
+    /**
       * `Export to PNG`
       */
     ["Export to PNG"](): string;
@@ -6654,6 +6658,299 @@ export function useAFFiNEI18N(): {
       * `WARNING MESSAGE`
       */
     ["com.affine.settings.workspace.experimental-features.prompt-warning-title"](): string;
+    /**
+      * `Analyze`
+      */
+    ["com.affine.chess.engine.analyze"](): string;
+    /**
+      * `Scan game`
+      */
+    ["com.affine.chess.engine.scan"](): string;
+    /**
+      * `Scanning…`
+      */
+    ["com.affine.chess.engine.scanning"](): string;
+    /**
+      * `Scan failed`
+      */
+    ["com.affine.chess.engine.scanFailed"](): string;
+    /**
+      * `Stop`
+      */
+    ["com.affine.chess.engine.stop"](): string;
+    /**
+      * `Offline analysis is available in the desktop app`
+      */
+    ["com.affine.chess.engine.unavailable"](): string;
+    /**
+      * `Depth`
+      */
+    ["com.affine.chess.engine.depth"](): string;
+    /**
+      * `ACPL`
+      */
+    ["com.affine.chess.engine.acpl"](): string;
+    /**
+      * `Inaccuracy`
+      */
+    ["com.affine.chess.engine.inaccuracy"](): string;
+    /**
+      * `Mistake`
+      */
+    ["com.affine.chess.engine.mistake"](): string;
+    /**
+      * `Blunder`
+      */
+    ["com.affine.chess.engine.blunder"](): string;
+    /**
+      * `Apply to PGN`
+      */
+    ["com.affine.chess.engine.apply"](): string;
+    /**
+      * `Chess coach`
+      */
+    ["com.affine.chess.coach.title"](): string;
+    /**
+      * `Ask coach`
+      */
+    ["com.affine.chess.coach.ask"](): string;
+    /**
+      * `Send`
+      */
+    ["com.affine.chess.coach.send"](): string;
+    /**
+      * `Stop`
+      */
+    ["com.affine.chess.coach.stop"](): string;
+    /**
+      * `Ask about this position…`
+      */
+    ["com.affine.chess.coach.placeholder"](): string;
+    /**
+      * `Paste an API key only as a fallback. Prefer Claude Code or Grok monthly subscriptions.`
+      */
+    ["com.affine.chess.coach.unavailable"](): string;
+    /**
+      * `Attach Claude Code`
+      */
+    ["com.affine.chess.coach.cliHint"](): string;
+    /**
+      * `Provider`
+      */
+    ["com.affine.chess.coach.provider"](): string;
+    /**
+      * `Claude Code (subscription)`
+      */
+    ["com.affine.chess.coach.provider.claude"](): string;
+    /**
+      * `Grok (subscription)`
+      */
+    ["com.affine.chess.coach.provider.grok"](): string;
+    /**
+      * `API key (extra)`
+      */
+    ["com.affine.chess.coach.provider.api"](): string;
+    /**
+      * `Using your monthly subscription on this computer. No extra API usage.`
+      */
+    ["com.affine.chess.coach.subscriptionReady"](): string;
+    /**
+      * `Install Claude Code and run `claude` once to sign in. The coach uses that monthly subscription, not an extra API key.`
+      */
+    ["com.affine.chess.coach.subscriptionMissing.claude"](): string;
+    /**
+      * `Install Grok Build and run `grok login`. The coach uses that monthly subscription, not an extra API key.`
+      */
+    ["com.affine.chess.coach.subscriptionMissing.grok"](): string;
+    /**
+      * `API key`
+      */
+    ["com.affine.chess.coach.apiKey"](): string;
+    /**
+      * `Save key`
+      */
+    ["com.affine.chess.coach.apiSave"](): string;
+    /**
+      * `Remove key`
+      */
+    ["com.affine.chess.coach.apiClear"](): string;
+    /**
+      * `Key saved on this device`
+      */
+    ["com.affine.chess.coach.apiSaved"](): string;
+    /**
+      * `Enable chess engine`
+      */
+    ["com.affine.settings.workspace.experimental-features.enable-chess-engine.name"](): string;
+    /**
+      * `Allow offline analysis with the bundled Arasan engine on desktop.`
+      */
+    ["com.affine.settings.workspace.experimental-features.enable-chess-engine.description"](): string;
+    /**
+      * `Enable chess coach`
+      */
+    ["com.affine.settings.workspace.experimental-features.enable-chess-coach.name"](): string;
+    /**
+      * `Local chess coach that uses your Claude Code subscription and the bundled engine.`
+      */
+    ["com.affine.settings.workspace.experimental-features.enable-chess-coach.description"](): string;
+    /**
+      * `Chess library`
+      */
+    ["com.affine.chess.library.title"](): string;
+    /**
+      * `Games`
+      */
+    ["com.affine.chess.library.tab.games"](): string;
+    /**
+      * `Import`
+      */
+    ["com.affine.chess.library.tab.import"](): string;
+    /**
+      * `Assignments`
+      */
+    ["com.affine.chess.library.tab.assignments"](): string;
+    /**
+      * `Review`
+      */
+    ["com.affine.chess.library.tab.review"](): string;
+    /**
+      * `Search games`
+      */
+    ["com.affine.chess.library.search"](): string;
+    /**
+      * `Rebuild index`
+      */
+    ["com.affine.chess.library.rebuild"](): string;
+    /**
+      * `No games indexed yet`
+      */
+    ["com.affine.chess.library.empty"](): string;
+    /**
+      * `Import`
+      */
+    ["com.affine.chess.library.import"](): string;
+    /**
+      * `PGN / chess`
+      */
+    ["com.affine.chess.library.importPgn"](): string;
+    /**
+      * `{{ok}} games, {{skipped}} skipped`
+      */
+    ["com.affine.chess.library.importResult"](options: Readonly<{
+        ok: string;
+        skipped: string;
+    }>): string;
+    /**
+      * `Could not import that PGN`
+      */
+    ["com.affine.chess.library.importFailed"](): string;
+    /**
+      * `PGN file is larger than 8 MB`
+      */
+    ["com.affine.chess.library.tooLarge"](): string;
+    /**
+      * `No game found`
+      */
+    ["com.affine.chess.library.noGame"](): string;
+    /**
+      * `Game URL / ID`
+      */
+    ["com.affine.chess.library.lichessGame"](): string;
+    /**
+      * `Username`
+      */
+    ["com.affine.chess.library.lichessUser"](): string;
+    /**
+      * `Not a Lichess game or username`
+      */
+    ["com.affine.chess.library.lichessInvalid"](): string;
+    /**
+      * `Lichess game or user not found`
+      */
+    ["com.affine.chess.library.lichessNotFound"](): string;
+    /**
+      * `Lichess rate limit — try again later`
+      */
+    ["com.affine.chess.library.lichessRateLimit"](): string;
+    /**
+      * `Paste the PGN or use the desktop app`
+      */
+    ["com.affine.chess.library.lichessHttp"](): string;
+    /**
+      * `Comment on move`
+      */
+    ["com.affine.chess.library.moveComment"](): string;
+    /**
+      * `New assignment`
+      */
+    ["com.affine.chess.assignment.new"](): string;
+    /**
+      * `Assign to…`
+      */
+    ["com.affine.chess.assignment.assign"](): string;
+    /**
+      * `Submit`
+      */
+    ["com.affine.chess.assignment.submit"](): string;
+    /**
+      * `Grade`
+      */
+    ["com.affine.chess.assignment.grade"](): string;
+    /**
+      * `Needs a synced workspace`
+      */
+    ["com.affine.chess.assignment.needSync"](): string;
+    /**
+      * `Assignment action failed`
+      */
+    ["com.affine.chess.assignment.failed"](): string;
+    /**
+      * `Add to review`
+      */
+    ["com.affine.chess.review.add"](): string;
+    /**
+      * `{{count}} due`
+      */
+    ["com.affine.chess.review.due"](options: {
+        readonly count: string;
+    }): string;
+    /**
+      * `No cards due`
+      */
+    ["com.affine.chess.review.empty"](): string;
+    /**
+      * `Again`
+      */
+    ["com.affine.chess.review.again"](): string;
+    /**
+      * `Hard`
+      */
+    ["com.affine.chess.review.hard"](): string;
+    /**
+      * `Good`
+      */
+    ["com.affine.chess.review.good"](): string;
+    /**
+      * `Easy`
+      */
+    ["com.affine.chess.review.easy"](): string;
+    /**
+      * `Correct`
+      */
+    ["com.affine.chess.review.correct"](): string;
+    /**
+      * `Solution`
+      */
+    ["com.affine.chess.review.solution"](): string;
+    /**
+      * `Enable chess library`
+      */
+    ["com.affine.settings.workspace.experimental-features.enable-chess-pedagogy.name"](): string;
+    /**
+      * `Import PGN/Lichess, index games, assign homework, and review with spaced repetition.`
+      */
+    ["com.affine.settings.workspace.experimental-features.enable-chess-pedagogy.description"](): string;
     /**
       * `Enable AI`
       */

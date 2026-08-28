@@ -57,7 +57,11 @@ type Configure = {
   cloud: (framework?: FrameworkProvider, enableCloud?: boolean) => Configure;
   turboRenderer: (enableTurboRenderer?: boolean) => Configure;
   pdf: (enablePDFEmbedPreview?: boolean, reactToLit?: ReactToLit) => Configure;
-  chess: (enableChess?: boolean, reactToLit?: ReactToLit) => Configure;
+  chess: (
+    enableChess?: boolean,
+    reactToLit?: ReactToLit,
+    framework?: FrameworkProvider
+  ) => Configure;
   mobile: (framework?: FrameworkProvider) => Configure;
   ai: (enable?: boolean, framework?: FrameworkProvider) => Configure;
   electron: (framework?: FrameworkProvider) => Configure;
@@ -320,9 +324,14 @@ class ViewProvider {
 
   private readonly _configureChess = (
     enableChess?: boolean,
-    reactToLit?: ReactToLit
+    reactToLit?: ReactToLit,
+    framework?: FrameworkProvider
   ) => {
-    this._manager.configure(ChessViewExtension, { enableChess, reactToLit });
+    this._manager.configure(ChessViewExtension, {
+      enableChess,
+      reactToLit,
+      framework,
+    });
     return this.config;
   };
 

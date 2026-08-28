@@ -297,6 +297,7 @@ __metadata:
     "@affine/i18n": "workspace:*"
     "@atlaskit/pragmatic-drag-and-drop": "npm:^2.0.0"
     "@atlaskit/pragmatic-drag-and-drop-hitbox": "npm:^2.0.0"
+    "@blocksuite/chess-core": "workspace:*"
     "@blocksuite/icons": "npm:^2.2.17"
     "@emotion/react": "npm:^11.14.0"
     "@emotion/styled": "npm:^11.14.0"

@@ -7,6 +7,7 @@ export {
   readFenceBody,
   writeFenceBody,
 } from './adapters/obsidian-fence.js';
+export { chessBoardPdfAdapterMatcher } from './adapters/pdf.js';
 export { ChessBoardBlockComponent } from './board-block.js';
 export { EdgelessChessBoardBlockComponent } from './edgeless-board-block.js';
 export { effects } from './effects.js';

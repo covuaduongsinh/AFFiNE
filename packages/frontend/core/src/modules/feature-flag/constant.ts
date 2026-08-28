@@ -322,14 +322,14 @@ export const AFFINE_FLAGS = {
     configurable: true,
     defaultState: true,
   },
-  enable_pdfmake_export: {
-    category: 'blocksuite',
-    bsFlag: 'enable_pdfmake_export',
-    displayName: 'Enable PDF Export',
+  enable_chess_pedagogy: {
+    category: 'affine',
+    displayName:
+      'com.affine.settings.workspace.experimental-features.enable-chess-pedagogy.name',
     description:
-      'Experimental export PDFs support, it may contain the wrong style.',
+      'com.affine.settings.workspace.experimental-features.enable-chess-pedagogy.description',
     configurable: true,
-    defaultState: false,
+    defaultState: true,
   },
 } satisfies { [key in string]: FlagInfo };
 
