@@ -23,6 +23,7 @@ import { type DocDisplayMetaService } from '../../doc-display-meta';
 import { GlobalContextService } from '../../global-context';
 import type { SnapshotHelper } from '../services/snapshot-helper';
 import type {
+  ChessCommentTarget,
   CommentAttachment,
   CommentId,
   DocComment,
@@ -121,6 +122,18 @@ export class DocCommentEntity extends Entity<{
 
     // Replace any existing pending comment (only one at a time)
     this.pendingComment$.setValue(pendingComment);
+    return id;
+  }
+
+  async addChessMoveComment(
+    chess: ChessCommentTarget,
+    preview: string
+  ): Promise<string> {
+    const id = await this.addComment(undefined, preview);
+    const pending = this.pendingComment$.value;
+    if (pending && pending.id === id) {
+      this.pendingComment$.setValue({ ...pending, chess });
+    }
     return id;
   }
 
@@ -227,7 +240,7 @@ export class DocCommentEntity extends Entity<{
       console.warn('Pending comment not found:', id);
       return;
     }
-    const { doc, preview, attachments } = pendingComment;
+    const { doc, preview, attachments, chess } = pendingComment;
     const snapshot = this.snapshotHelper.getSnapshot(doc);
     if (!snapshot) {
       throw new Error('Failed to get snapshot');
@@ -239,6 +252,7 @@ export class DocCommentEntity extends Entity<{
         preview,
         mode: this.docMode$.value ?? 'page',
         attachments,
+        ...(chess ? { chess } : {}),
       },
       mentions,
     });

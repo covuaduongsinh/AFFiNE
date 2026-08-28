@@ -114,4 +114,63 @@ describe('comments', () => {
     );
     expect(node?.node.resolved).toBe(true);
   });
+
+  it('stores a chess move target on comment content', async () => {
+    server = await startTestServer();
+    const { baseUrl } = server.handle;
+    const owner = await signInCookie(baseUrl, 'chess-cmt@x.test', 'password1');
+    const created = await gql<{ createWorkspace: { id: string } }>(
+      baseUrl,
+      `mutation { createWorkspace { id } }`,
+      undefined,
+      { cookies: owner.cookies }
+    );
+    const workspaceId = created.data!.createWorkspace.id;
+    const content = {
+      preview: '1. e4',
+      chess: { blockId: 'blk', path: [0], san: 'e4' },
+    };
+    const comment = await gql<{
+      createComment: { id: string; content: { chess?: { path: number[] } } };
+    }>(
+      baseUrl,
+      `mutation($input: CommentCreateInput!) {
+        createComment(input: $input) { id content }
+      }`,
+      {
+        input: {
+          workspaceId,
+          docId: 'game-doc',
+          docMode: 'page',
+          docTitle: 'Game',
+          content,
+        },
+      },
+      { cookies: owner.cookies }
+    );
+    expect(comment.errors).toBeUndefined();
+    const listed = await gql<{
+      workspace: {
+        comments: {
+          edges: {
+            node: { content: { chess?: { path: number[]; san?: string } } };
+          }[];
+        };
+      };
+    }>(
+      baseUrl,
+      `query($workspaceId: String!, $docId: String!) {
+        workspace(id: $workspaceId) {
+          comments(docId: $docId) {
+            edges { node { content } }
+          }
+        }
+      }`,
+      { workspaceId, docId: 'game-doc' },
+      { cookies: owner.cookies }
+    );
+    const node = listed.data?.workspace.comments.edges[0]?.node;
+    expect(node?.content.chess?.path).toEqual([0]);
+    expect(node?.content.chess?.san).toBe('e4');
+  });
 });

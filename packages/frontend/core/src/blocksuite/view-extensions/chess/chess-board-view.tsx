@@ -5,6 +5,7 @@ import {
   type PieceLetter,
   type SquareName,
 } from '@affine/component/ui/chess';
+import { ChessReviewService } from '@affine/core/modules/chess-review';
 import { useSignalValue } from '@affine/core/modules/doc-info/utils';
 import { I18n } from '@affine/i18n';
 import {
@@ -28,6 +29,7 @@ import {
   toFen,
   writeFen,
 } from '@blocksuite/chess-core';
+import { useServiceOptional } from '@toeverything/infra';
 import clsx from 'clsx';
 import {
   type CSSProperties,
@@ -113,6 +115,7 @@ const noop = () => {};
  * reaches the document.
  */
 export const ChessBoardView = ({ model }: ChessBoardViewProps) => {
+  const review = useServiceOptional(ChessReviewService);
   const fen = useSignalValue(model.props.fen$);
   const orientation = useSignalValue(model.props.orientation$);
   const editable = useSignalValue(model.props.editable$);
@@ -492,6 +495,20 @@ export const ChessBoardView = ({ model }: ChessBoardViewProps) => {
             onClick={startLive}
           >
             {I18n.t('com.affine.chess.engine.analyze')}
+          </button>
+          <button
+            className={gameStyles.controlButton}
+            data-testid="chess-add-review"
+            title={I18n.t('com.affine.chess.review.add')}
+            onClick={() => {
+              review?.add({
+                fen,
+                sourceDocId: model.store.id,
+                sourceBlockId: model.id,
+              });
+            }}
+          >
+            {I18n.t('com.affine.chess.review.add')}
           </button>
           <button
             className={gameStyles.controlButton}

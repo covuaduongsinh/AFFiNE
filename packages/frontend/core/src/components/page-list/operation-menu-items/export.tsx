@@ -1,16 +1,15 @@
 import { MenuItem, MenuSeparator, MenuSub } from '@affine/component';
-import { FeatureFlagService } from '@affine/core/modules/feature-flag';
 import { useI18n } from '@affine/i18n';
 import { track } from '@affine/track';
 import {
   ExportIcon,
   ExportToHtmlIcon,
   ExportToMarkdownIcon,
+  ExportToPdfIcon,
   ExportToPngIcon,
   PageIcon,
   PrinterIcon,
 } from '@blocksuite/icons/rc';
-import { useLiveData, useService } from '@toeverything/infra';
 import type { ReactNode } from 'react';
 import { useCallback } from 'react';
 
@@ -81,10 +80,6 @@ export const ExportMenuItems = ({
   pageMode = 'page',
 }: ExportProps) => {
   const t = useI18n();
-  const featureFlags = useService(FeatureFlagService).flags;
-  const enable_pdfmake_export = useLiveData(
-    featureFlags.enable_pdfmake_export.$
-  );
 
   return (
     <>
@@ -118,12 +113,12 @@ export const ExportMenuItems = ({
         icon={<ExportToMarkdownIcon />}
         label={t['com.affine.export.copy-markdown']()}
       />
-      {pageMode !== 'edgeless' && enable_pdfmake_export && (
+      {pageMode !== 'edgeless' && (
         <ExportMenuItem
           onSelect={() => exportHandler('pdf-export')}
           className={className}
           type="pdf-export"
-          icon={<PrinterIcon />}
+          icon={<ExportToPdfIcon />}
           label={t['Export to PDF']()}
         />
       )}

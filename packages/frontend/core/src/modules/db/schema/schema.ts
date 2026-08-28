@@ -54,6 +54,20 @@ export const AFFiNE_WORKSPACE_DB_SCHEMA = {
     id: f.string().primaryKey(),
     icon: f.json<IconData>(),
   },
+  chessGames: {
+    id: f.string().primaryKey(),
+    docId: f.string(),
+    blockId: f.string(),
+    white: f.string(),
+    black: f.string(),
+    event: f.string(),
+    date: f.string(),
+    result: f.string(),
+    eco: f.string(),
+    site: f.string(),
+    caption: f.string(),
+    plyCount: f.number(),
+  },
 } as const satisfies DBSchemaBuilder;
 export type AFFiNEWorkspaceDbSchema = typeof AFFiNE_WORKSPACE_DB_SCHEMA;
 
@@ -81,6 +95,19 @@ export const AFFiNE_WORKSPACE_USERDATA_DB_SCHEMA = {
      */
     integrationId: f.string(),
     refMeta: f.json(),
+  },
+  chessReview: {
+    id: f.string().primaryKey(),
+    fen: f.string(),
+    prompt: f.string(),
+    solutionSan: f.string(),
+    sourceDocId: f.string(),
+    sourceBlockId: f.string(),
+    ef: f.number(),
+    interval: f.number(),
+    repetitions: f.number(),
+    due: f.number(),
+    lastScore: f.number(),
   },
 } as const satisfies DBSchemaBuilder;
 export type AFFiNEWorkspaceUserdataDbSchema =

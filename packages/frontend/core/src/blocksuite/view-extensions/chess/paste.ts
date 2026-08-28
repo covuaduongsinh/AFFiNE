@@ -6,7 +6,19 @@ import {
   type UIEventHandler,
 } from '@blocksuite/affine/std';
 import type { BlockModel } from '@blocksuite/affine/store';
-import { type ChessTextMatch, detectChessText } from '@blocksuite/chess-core';
+import {
+  type ChessTextMatch,
+  detectChessText,
+  importPgnGames,
+} from '@blocksuite/chess-core';
+
+import {
+  applyImportedGames,
+  isPgnFile,
+  readPgnFile,
+  titleFromPgnFileName,
+} from '../../../modules/chess-library/import-apply';
+import { getChessFramework } from './framework';
 
 /**
  * Turns a pasted position or game into the matching block.
@@ -154,6 +166,80 @@ export class ChessPasteWatcher extends LifeCycleWatcher {
     return true;
   }
 
+  private _insertPgn(pgn: string, caption: string): boolean {
+    const model = this._currentModel();
+    if (!model) return false;
+    const { store } = this.std;
+    if (model.flavour === 'affine:chess-game') {
+      store.captureSync();
+      store.updateBlock(model, { pgn, currentPath: [], caption });
+      return true;
+    }
+    const parent = store.getParent(model);
+    if (!parent) return false;
+    const index = parent.children.indexOf(model);
+    if (index === -1) return false;
+    const replacing = isEmptyParagraph(model);
+    const id = store.addBlock(
+      'affine:chess-game',
+      {
+        pgn,
+        currentPath: [],
+        orientation: 'white',
+        caption,
+        analysisJson: '',
+      },
+      parent,
+      replacing ? index : index + 1
+    );
+    if (!id) return false;
+    if (replacing) store.deleteBlock(model);
+    return true;
+  }
+
+  private readonly _onDragOver = (event: DragEvent) => {
+    if (event.dataTransfer?.types.includes('Files')) {
+      event.preventDefault();
+    }
+  };
+
+  private readonly _onNativeDrop = (event: DragEvent) => {
+    if (this.std.store.readonly) return;
+    const files = Array.from(event.dataTransfer?.files ?? []).filter(isPgnFile);
+    if (files.length === 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this._importDropped(files).catch(() => {});
+  };
+
+  private async _importDropped(files: File[]) {
+    const insertOne = (pgn: string, caption: string) =>
+      this._insertPgn(pgn, caption);
+    const framework = getChessFramework();
+    if (framework) {
+      // paste.spec.ts imports this file; the service pulls telemetry storage.
+      const { ChessLibraryService } =
+        await import('../../../modules/chess-library');
+      const library = framework.getOptional(ChessLibraryService);
+      if (library) {
+        await library.importFiles(files, insertOne);
+        return;
+      }
+    }
+    for (const file of files) {
+      const text = await readPgnFile(file);
+      const result = importPgnGames(text);
+      await applyImportedGames(
+        result.games,
+        {
+          insertOne,
+          createMultiGameDoc: async () => '',
+        },
+        titleFromPgnFileName(file.name)
+      );
+    }
+  }
+
   private readonly _onPaste: UIEventHandler = ctx => {
     if (this.std.store.readonly) return false;
 
@@ -189,6 +275,13 @@ export class ChessPasteWatcher extends LifeCycleWatcher {
     // registered after the root block's PageClipboard, which is what lets it
     // decide before the default paste happens — keep that ordering.
     this._disposables.add(this.std.event.add('paste', this._onPaste));
+    const host = this.std.host;
+    host.addEventListener('drop', this._onNativeDrop);
+    host.addEventListener('dragover', this._onDragOver);
+    this._disposables.add(() => {
+      host.removeEventListener('drop', this._onNativeDrop);
+      host.removeEventListener('dragover', this._onDragOver);
+    });
   }
 
   override unmounted() {

@@ -1,7 +1,20 @@
+import { notify } from '@affine/component';
 import { Chessboard } from '@affine/component/ui/chess';
+import {
+  ChessAssignmentService,
+  isSubmissionLocked,
+} from '@affine/core/modules/chess-assignment';
 import { ChessCoachService } from '@affine/core/modules/chess-coach';
+import { ChessLibraryService } from '@affine/core/modules/chess-library';
+import { ChessReviewService } from '@affine/core/modules/chess-review';
+import { ServerService } from '@affine/core/modules/cloud';
+import { DocCommentManagerService } from '@affine/core/modules/comment/services/doc-comment-manager';
+import type { DocComment } from '@affine/core/modules/comment/types';
+import { DocService } from '@affine/core/modules/doc';
 import { useSignalValue } from '@affine/core/modules/doc-info/utils';
 import { ViewService, WorkbenchService } from '@affine/core/modules/workbench';
+import { WorkspaceService } from '@affine/core/modules/workspace';
+import { ServerFeature } from '@affine/graphql';
 import { I18n } from '@affine/i18n';
 import type { ChessGameBlockModel } from '@blocksuite/chess-block-game';
 import {
@@ -10,6 +23,7 @@ import {
   deleteFrom,
   findMove,
   findPieces,
+  formatMovePreview,
   type Game,
   inCheck,
   KING,
@@ -34,7 +48,7 @@ import {
   type MoveLabel,
   pvUciToSan,
 } from '@blocksuite/chess-engine';
-import { useServiceOptional } from '@toeverything/infra';
+import { useLiveData, useServiceOptional } from '@toeverything/infra';
 import clsx from 'clsx';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -45,6 +59,8 @@ import { guardFieldPointer, nestedFieldEvents } from './field-guard';
 import { useChessAnalysis } from './use-chess-analysis';
 
 const MemoChessboard = memo(Chessboard);
+
+const EMPTY_COMMENTS: DocComment[] = [];
 
 export interface ChessGameViewProps {
   model: ChessGameBlockModel;
@@ -105,6 +121,7 @@ interface MoveTokenProps {
   /** Black must restate the number after a comment or a variation. */
   forceNumber: boolean;
   label?: MoveLabel;
+  commented?: boolean;
 }
 
 const MoveToken = ({
@@ -114,6 +131,7 @@ const MoveToken = ({
   onSelect,
   forceNumber,
   label,
+  commented,
 }: MoveTokenProps) => {
   const { isWhite, number } = numbering(node);
 
@@ -131,6 +149,7 @@ const MoveToken = ({
         className={clsx(
           styles.move,
           samePath(path, currentPath) && styles.currentMove,
+          commented && styles.commentedMove,
           label && MOVE_LABEL_CLASS[label]
         )}
         title={moveLabelTitle(label)}
@@ -167,6 +186,7 @@ interface MoveListProps {
   onSelect: (path: MovePath) => void;
   forceNumber?: boolean;
   labels?: ReadonlyMap<string, MoveLabel>;
+  commentedPaths?: ReadonlySet<string>;
 }
 
 /**
@@ -183,6 +203,7 @@ const MoveList = ({
   onSelect,
   forceNumber = false,
   labels,
+  commentedPaths,
 }: MoveListProps) => {
   if (nodes.length === 0) return null;
 
@@ -198,6 +219,7 @@ const MoveList = ({
         onSelect={onSelect}
         forceNumber={forceNumber}
         label={labels ? labelForPath(labels, mainPath) : undefined}
+        commented={commentedPaths?.has(mainPath.join('.'))}
       />
       {alternatives.map((alternative, index) => {
         // `index` counts from the second sibling, so the real index is +1.
@@ -211,6 +233,7 @@ const MoveList = ({
               onSelect={onSelect}
               forceNumber
               label={labels ? labelForPath(labels, alternativePath) : undefined}
+              commented={commentedPaths?.has(alternativePath.join('.'))}
             />
             <MoveList
               nodes={alternative.children}
@@ -219,6 +242,7 @@ const MoveList = ({
               onSelect={onSelect}
               forceNumber={alternative.comment !== undefined}
               labels={labels}
+              commentedPaths={commentedPaths}
             />
           </span>
         );
@@ -230,6 +254,7 @@ const MoveList = ({
         onSelect={onSelect}
         forceNumber={alternatives.length > 0 || main.comment !== undefined}
         labels={labels}
+        commentedPaths={commentedPaths}
       />
     </>
   );
@@ -343,20 +368,28 @@ const NAG_CHOICES: { nag: number; symbol: string; label: string }[] = [
 /**
  * Replays and annotates a game.
  *
- * PGN text on the model is the source of truth: every edit re-parses it, mutates
- * the throwaway tree, and serializes straight back. That keeps annotations tied
- * to their moves through a CRDT merge and means the block's contents are always
- * exactly what another chess tool would read.
+ * The stored PGN is the source of truth; analysisJson is a local overlay.
  */
 export const ChessGameView = ({ model }: ChessGameViewProps) => {
   const workbenchService = useServiceOptional(WorkbenchService);
   const viewService = useServiceOptional(ViewService);
   const coach = useServiceOptional(ChessCoachService);
+  const library = useServiceOptional(ChessLibraryService);
+  const assignment = useServiceOptional(ChessAssignmentService);
+  const review = useServiceOptional(ChessReviewService);
+  const commentManager = useServiceOptional(DocCommentManagerService);
+  const docService = useServiceOptional(DocService);
+  const workspace = useServiceOptional(WorkspaceService);
+  const serverService = useServiceOptional(ServerService);
+  const assignmentProps =
+    assignment && docService ? assignment.docProps(docService.doc.id) : {};
+  const me = assignment?.currentUserId();
+  const locked = isSubmissionLocked(assignmentProps, me);
   const pgn = useSignalValue(model.props.pgn$);
   const currentPath = useSignalValue(model.props.currentPath$);
   const orientation = useSignalValue(model.props.orientation$);
   const analysisJson = useSignalValue(model.props.analysisJson$) ?? '';
-  const readonly = model.store.readonly;
+  const readonly = model.store.readonly || locked;
   const persistScan = useCallback(
     (json: string) => {
       if (readonly) return;
@@ -452,6 +485,37 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
       },
     });
   }, [coach, model]);
+
+  useEffect(() => {
+    if (!library) return;
+    library.upsertGame(model.store.id, model.id, pgn);
+  }, [library, model.store.id, model.id, pgn]);
+
+  const commentRef = commentManager?.get(model.store.id);
+  const commentList = useLiveData(commentRef?.obj.comments$) ?? EMPTY_COMMENTS;
+  useEffect(() => () => commentRef?.release(), [commentRef]);
+
+  const commentedPaths = useMemo(() => {
+    const paths = new Set<string>();
+    for (const comment of commentList) {
+      const target = comment.content?.chess;
+      if (!comment.resolved && target?.blockId === model.id && target.path) {
+        paths.add(target.path.join('.'));
+      }
+    }
+    return paths;
+  }, [commentList, model.id]);
+
+  useEffect(() => {
+    if (!commentRef) return;
+    return commentRef.obj.onCommentHighlighted(id => {
+      if (!id) return;
+      const found = commentRef.obj.comments$.value.find(item => item.id === id);
+      const target = found?.content?.chess;
+      if (!target || target.blockId !== model.id) return;
+      model.store.updateBlock(model, { currentPath: target.path });
+    });
+  }, [commentRef, model]);
 
   const openCoach = useCallback(() => {
     activate();
@@ -801,6 +865,7 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
               currentPath={path}
               onSelect={goTo}
               labels={labels}
+              commentedPaths={commentedPaths}
             />
           )}
         </div>
@@ -864,6 +929,35 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
               onClick={openCoach}
             >
               {I18n.t('com.affine.chess.coach.ask')}
+            </button>
+            <button
+              className={styles.controlButton}
+              data-testid="chess-add-review"
+              title={I18n.t('com.affine.chess.review.add')}
+              onClick={() => {
+                if (!review || !position) return;
+                const blunder = scan?.nodes.find(
+                  node => node.label === 'blunder' && samePath(node.path, path)
+                );
+                if (blunder?.bestPvSan[0] && game) {
+                  const parent = path.slice(0, -1);
+                  review.addFromPuzzle(
+                    {
+                      fen: toFen(positionAt(game, parent)),
+                      solutionSan: blunder.bestPvSan[0],
+                    },
+                    { docId: model.store.id, blockId: model.id }
+                  );
+                } else {
+                  review.add({
+                    fen: toFen(position),
+                    sourceDocId: model.store.id,
+                    sourceBlockId: model.id,
+                  });
+                }
+              }}
+            >
+              {I18n.t('com.affine.chess.review.add')}
             </button>
             <select
               className={styles.controlButton}
@@ -958,6 +1052,43 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
                 if (event.key === 'Enter') event.currentTarget.blur();
               }}
             />
+            <button
+              className={styles.controlButton}
+              data-testid="chess-move-comment"
+              onClick={() => {
+                const flavour = workspace?.workspace.flavour;
+                const features =
+                  serverService?.server.config$.value.features ?? [];
+                if (
+                  flavour === 'local' ||
+                  !features.includes(ServerFeature.Comment)
+                ) {
+                  notify.error({
+                    title: I18n.t('com.affine.chess.assignment.needSync'),
+                  });
+                  return;
+                }
+                if (!commentRef || !game) return;
+                const preview = formatMovePreview(game, path);
+                void commentRef.obj
+                  .addChessMoveComment(
+                    {
+                      blockId: model.id,
+                      path,
+                      san: currentNode.san,
+                      fenAfter: currentNode.fenAfter,
+                    },
+                    preview
+                  )
+                  .then(() => {
+                    workbenchService?.workbench.openSidebar();
+                    viewService?.view.activeSidebarTab('comment');
+                  })
+                  .catch(() => {});
+              }}
+            >
+              {I18n.t('com.affine.chess.library.moveComment')}
+            </button>
             <div className={styles.nagRow}>
               {(path.at(-1) ?? 0) > 0 && (
                 <button

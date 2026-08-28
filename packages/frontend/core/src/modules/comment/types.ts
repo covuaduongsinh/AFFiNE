@@ -5,6 +5,7 @@ import type {
   DocSnapshot,
   Store,
 } from '@blocksuite/affine/store';
+import type { MovePath } from '@blocksuite/chess-core';
 
 export type CommentId = string;
 
@@ -16,6 +17,12 @@ export type CommentAttachment = {
   size?: number; // in bytes
 };
 
+export type ChessCommentTarget = {
+  blockId: string;
+  path: MovePath;
+  san: string;
+  fenAfter?: string;
+};
 export interface BaseComment {
   id: CommentId;
   content?: DocCommentContent;
@@ -35,8 +42,9 @@ export type PendingComment = {
   doc: Store;
   preview?: string;
   selections?: BaseSelection[];
-  commentId?: CommentId; // only for replies, points to the parent comment
+  commentId?: CommentId;
   attachments: CommentAttachment[];
+  chess?: ChessCommentTarget;
 };
 
 export interface DocCommentReply extends BaseComment {
@@ -45,10 +53,11 @@ export interface DocCommentReply extends BaseComment {
 }
 
 export type DocCommentContent = {
-  snapshot: DocSnapshot; // blocksuite snapshot
+  snapshot: DocSnapshot;
   attachments?: CommentAttachment[];
   mode?: DocMode;
-  preview?: string; // text preview of the target
+  preview?: string;
+  chess?: ChessCommentTarget;
 };
 
 export interface DocCommentListResult {
