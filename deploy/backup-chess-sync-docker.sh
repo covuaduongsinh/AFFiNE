@@ -21,7 +21,7 @@ PROJECT_DIR="/etc/dokploy/compose/$APP_NAME/code"
 
 # A plain host bind mount, not a Docker volume, which is why this is a normal
 # tar of a normal path.
-DATA_PARENT=/srv/affine
+DATA_PARENT=/etc/dokploy/affine
 DATA_NAME=data
 DEST=/var/backups/chess-sync
 REMOTE=gcrypt:daily
@@ -65,10 +65,19 @@ trap - EXIT
 zstd -t "$OUT"
 sha256sum "$OUT" > "$OUT.sha256"
 
-rclone copy "$OUT" "$REMOTE/" --immutable
-rclone copy "$OUT.sha256" "$REMOTE/" --immutable
+# The remote needs `rclone config`, which needs a browser sign-in, so it may
+# not exist yet. A local cold copy is still worth having every night, and a job
+# that fails on a missing remote would just train you to ignore the failures.
+if rclone listremotes 2>/dev/null | grep -q "^${REMOTE%%:*}:"; then
+	rclone copy "$OUT" "$REMOTE/" --immutable
+	rclone copy "$OUT.sha256" "$REMOTE/" --immutable
+	rclone delete --min-age "${KEEP_REMOTE_DAYS}d" "$REMOTE/"
+	echo "uploaded to $REMOTE"
+else
+	echo "warning: rclone remote '${REMOTE%%:*}' is not configured — kept the local copy only." >&2
+	echo "         run: rclone config   (create a storage remote, then a 'crypt' remote wrapping it)" >&2
+fi
 
 find "$DEST" -name 'chess-sync-*.tar.zst*' -mtime "+$KEEP_LOCAL_DAYS" -delete
-rclone delete --min-age "${KEEP_REMOTE_DAYS}d" "$REMOTE/"
 
 echo "backed up $OUT"
