@@ -262,6 +262,21 @@ export const Chessboard = ({
     [arrowStart, drag, onArrowDraw, onMove, setSelected, squareAtPoint]
   );
 
+  /**
+   * A cancelled pointer is not a released one.
+   *
+   * `pointercancel` carries coordinates like any other pointer event, so
+   * routing it through the release handler was enough to commit a move: on a
+   * phone the page scroller can claim a drag part-way through, and if the
+   * finger had already crossed into the next square, the board wrote a move
+   * nobody made. Drop the gesture instead — the piece stays where it was, and
+   * the player tries again.
+   */
+  const handlePointerCancel = useCallback(() => {
+    setArrowStart(null);
+    setDrag(null);
+  }, []);
+
   /** Squares in display order for the current orientation. */
   const cells = useMemo(() => {
     const ranks =
@@ -295,10 +310,11 @@ export const Chessboard = ({
       <div
         ref={boardRef}
         className={styles.board}
+        data-interactive={interactive ? 'true' : undefined}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
         onContextMenu={event => event.preventDefault()}
         role="grid"
         aria-label="Chess board"

@@ -2,6 +2,8 @@ import { cssVar } from '@toeverything/theme';
 import { cssVarV2 } from '@toeverything/theme/v2';
 import { style } from '@vanilla-extract/css';
 
+import { touchHeight, touchTarget, touchTypeSize } from './touch.css';
+
 export const root = style({
   display: 'flex',
   flexDirection: 'column',
@@ -52,56 +54,70 @@ export const row = style({
   alignItems: 'center',
 });
 
-export const select = style({
-  border: `1px solid ${cssVarV2('layer/insideBorder/border')}`,
-  background: 'transparent',
-  color: cssVarV2('text/primary'),
-  borderRadius: 4,
-  padding: '4px 6px',
-  fontSize: cssVar('fontXs'),
-});
+export const select = style([
+  touchHeight,
+  touchTypeSize,
+  {
+    border: `1px solid ${cssVarV2('layer/insideBorder/border')}`,
+    background: 'transparent',
+    color: cssVarV2('text/primary'),
+    borderRadius: 4,
+    padding: '4px 6px',
+    fontSize: cssVar('fontXs'),
+  },
+]);
 
-export const secret = style({
-  flex: 1,
-  minWidth: 120,
-  border: `1px solid ${cssVarV2('layer/insideBorder/border')}`,
-  background: 'transparent',
-  color: cssVarV2('text/primary'),
-  borderRadius: 4,
-  padding: '4px 6px',
-  fontSize: cssVar('fontXs'),
-});
+export const secret = style([
+  touchHeight,
+  touchTypeSize,
+  {
+    flex: 1,
+    minWidth: 120,
+    border: `1px solid ${cssVarV2('layer/insideBorder/border')}`,
+    background: 'transparent',
+    color: cssVarV2('text/primary'),
+    borderRadius: 4,
+    padding: '4px 6px',
+    fontSize: cssVar('fontXs'),
+  },
+]);
 
 export const composer = style({
   display: 'flex',
   gap: 6,
 });
 
-export const input = style({
-  flex: 1,
-  minHeight: 56,
-  resize: 'vertical',
-  border: `1px solid ${cssVarV2('layer/insideBorder/border')}`,
-  borderRadius: 4,
-  padding: 8,
-  background: 'transparent',
-  color: cssVarV2('text/primary'),
-  fontSize: cssVar('fontSm'),
-});
+export const input = style([
+  touchTypeSize,
+  {
+    flex: 1,
+    minHeight: 56,
+    resize: 'vertical',
+    border: `1px solid ${cssVarV2('layer/insideBorder/border')}`,
+    borderRadius: 4,
+    padding: 8,
+    background: 'transparent',
+    color: cssVarV2('text/primary'),
+    fontSize: cssVar('fontSm'),
+  },
+]);
 
-export const button = style({
-  border: `1px solid ${cssVarV2('layer/insideBorder/border')}`,
-  background: 'transparent',
-  color: cssVarV2('text/primary'),
-  borderRadius: 4,
-  padding: '4px 8px',
-  cursor: 'pointer',
-  fontSize: cssVar('fontSm'),
-  alignSelf: 'flex-end',
-  selectors: {
-    '&:disabled': {
-      opacity: 0.4,
-      cursor: 'default',
+export const button = style([
+  touchTarget,
+  {
+    border: `1px solid ${cssVarV2('layer/insideBorder/border')}`,
+    background: 'transparent',
+    color: cssVarV2('text/primary'),
+    borderRadius: 4,
+    padding: '4px 8px',
+    cursor: 'pointer',
+    fontSize: cssVar('fontSm'),
+    alignSelf: 'flex-end',
+    selectors: {
+      '&:disabled': {
+        opacity: 0.4,
+        cursor: 'default',
+      },
     },
   },
-});
+]);

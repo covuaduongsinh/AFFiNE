@@ -1,4 +1,3 @@
-import { BOARD_SIZE } from '@affine/component/ui/chess';
 import { cssVar } from '@toeverything/theme';
 import { cssVarV2 } from '@toeverything/theme/v2';
 import { style } from '@vanilla-extract/css';
@@ -9,11 +8,18 @@ export const wrap = style({
   alignItems: 'center',
   gap: 4,
   flex: '0 0 18px',
+  // Match whatever height the board resolved to. The board is fluid — it fills
+  // its column and takes its height from a 1/1 aspect ratio — so a bar with a
+  // fixed height hangs below it on any screen narrower than the maximum, which
+  // is every phone.
+  alignSelf: 'stretch',
+  minHeight: 0,
 });
 
 export const bar = style({
   width: 14,
-  height: BOARD_SIZE,
+  flex: 1,
+  minHeight: 0,
   borderRadius: 3,
   overflow: 'hidden',
   display: 'flex',

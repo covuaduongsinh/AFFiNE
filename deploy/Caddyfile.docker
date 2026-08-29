@@ -15,6 +15,34 @@
 	}
 }
 
+# Shared by both bundles: each has its own `selfhost.html` and its own hashed
+# assets, so only the root differs.
+(app_static) {
+	# no-cache is the default and hashed paths opt into immutable, not the
+	# other way round. Reversed, a request for `/` or `/workspace/x` is
+	# rewritten to selfhost.html *after* the header matchers have run against
+	# the original path, so the entry document ships with no Cache-Control at
+	# all and browsers cache it heuristically — the failure where a deploy
+	# never reaches anyone.
+	@immutable path /js/* /assets/* /static/* /fonts/* *.wasm *.css
+	header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+	@volatile not path /js/* /assets/* /static/* /fonts/* *.wasm *.css
+	header @volatile Cache-Control "no-cache"
+
+	# selfhost.html, never index.html. index.html is the AFFiNE *Cloud* entry;
+	# selfhost.html carries <meta name="env:isSelfHosted">, which is what makes
+	# the app treat this origin as its server. The explicit `index` is not
+	# redundant: `/` resolves to a directory, try_files considers a directory to
+	# exist, and file_server then falls back to its default index list — which
+	# starts with index.html. Deleting that file at extraction time is the other
+	# half of this, and it has to be deleted from *both* roots.
+	try_files {path} /selfhost.html
+	file_server {
+		index selfhost.html
+	}
+}
+
 :80 {
 	log {
 		output stdout
@@ -62,31 +90,40 @@
 		}
 	}
 
+	# AFFiNE ships two separate bundles, and which one you get is decided at
+	# build time, not at runtime: `BUILD_CONFIG.isMobileEdition` is a compile
+	# time constant, so the desktop bundle cannot become the mobile one however
+	# narrow the screen is. The mobile bundle is a real, maintained application
+	# — its own router, its own 200-odd screens, a keyboard toolbar, haptics —
+	# and it is the only one worth giving a phone. Upstream picks between them
+	# by user agent in its own static server, which we do not run; this is the
+	# same decision made here instead.
+	#
+	# Deliberately narrow: phones only. A tablet keeps the desktop bundle,
+	# because iPadOS Safari reports a desktop user agent anyway and a 10-inch
+	# screen has room for the layout the desktop build assumes. Change this
+	# matcher if that stops being true.
+	# Quoted: the pattern contains spaces, and an unquoted argument would be
+	# split into several and rejected.
+	#
+	# `android.+mobile` is Google's own rule — Android phones carry the `Mobile`
+	# token and Android tablets omit it. `iphone|ipod` deliberately does not
+	# match `ipad`.
+	@phone header_regexp User-Agent "(?i)(android.+mobile|iphone|ipod|windows phone|blackberry|bb10|opera mini|iemobile)"
+
+	handle @phone {
+		# Two bundles behind one URL means a cache that ignores the user agent
+		# can hand a phone the desktop entry document, which then loads asset
+		# paths that only exist in the other tree. The asset filenames are
+		# content-hashed so nothing collides, but the page would be broken.
+		header Vary User-Agent
+		root * /srv/affine-web-mobile
+		import app_static
+	}
+
 	handle {
+		header Vary User-Agent
 		root * /srv/affine-web
-
-		# no-cache is the default and hashed paths opt into immutable, not the
-		# other way round. Reversed, a request for `/` or `/workspace/x` is
-		# rewritten to selfhost.html *after* the header matchers have run
-		# against the original path, so the entry document ships with no
-		# Cache-Control at all and browsers cache it heuristically — the
-		# failure where a deploy never reaches anyone.
-		@immutable path /js/* /assets/* /static/* /fonts/* *.wasm *.css
-		header @immutable Cache-Control "public, max-age=31536000, immutable"
-
-		@volatile not path /js/* /assets/* /static/* /fonts/* *.wasm *.css
-		header @volatile Cache-Control "no-cache"
-
-		# selfhost.html, never index.html. index.html is the AFFiNE *Cloud*
-		# entry; selfhost.html carries <meta name="env:isSelfHosted">, which is
-		# what makes the app treat this origin as its server. The explicit
-		# `index` is not redundant: `/` resolves to a directory, try_files
-		# considers a directory to exist, and file_server then falls back to
-		# its default index list — which starts with index.html. Deleting that
-		# file at extraction time is the other half of this.
-		try_files {path} /selfhost.html
-		file_server {
-			index selfhost.html
-		}
+		import app_static
 	}
 }

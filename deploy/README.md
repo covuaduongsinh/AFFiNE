@@ -133,3 +133,40 @@ mật khẩu.
 
 Mỗi tháng khôi phục thử một lần, theo đúng quy trình trong `an-toan-du-lieu.md`. Một bản sao lưu
 chưa từng khôi phục chỉ là một giả thuyết.
+
+## 9. Bản mobile
+
+Điện thoại nhận một bản dựng **khác**, không phải bản desktop thu nhỏ. AFFiNE quyết định điều đó
+lúc biên dịch (`BUILD_CONFIG.isMobileEdition` là hằng số), nên không có cách nào để một bản tự
+thích nghi — phải phục vụ hai gói và chọn theo User-Agent, việc mà Caddy làm ở đây.
+
+```bash
+# trên máy dev
+PUBLIC_PATH=/ yarn affine @affine/mobile build
+find packages/frontend/apps/mobile/dist -name '*.map' -delete
+tar -C packages/frontend/apps/mobile -czf mobile-dist.tar.gz dist
+
+# trên VPS
+mkdir -p /etc/dokploy/affine/web-mobile
+tar -xzf mobile-dist.tar.gz -C /tmp
+cp -a /tmp/dist/. /etc/dokploy/affine/web-mobile/
+rm -f /etc/dokploy/affine/web-mobile/index.html
+chmod -R a+rX /etc/dokploy/affine/web-mobile
+```
+
+Xoá `index.html` ở **cả hai** thư mục, vì cùng một lý do: đó là trang vào của bản AFFiNE Cloud.
+
+**Thứ tự quan trọng:** đẩy gói lên trước, sửa Caddyfile sau, rồi mới triển khai lại. Làm ngược thì
+điện thoại nhận 404 cho tới khi tải xong. Và phải triển khai lại chứ không phải `restart` — thêm
+một bind mount thì container phải được tạo lại.
+
+**Máy tính bảng dùng bản desktop, có chủ đích.** Safari trên iPadOS 13 trở lên khai báo User-Agent
+y hệt macOS nên không phân biệt được ở phía máy chủ; mà kể cả phân biệt được cũng không nên đổi:
+màn 10 inch đủ chỗ cho bố cục desktop, và bản mobile **không có** thanh bên, thanh công cụ hover,
+lẫn menu gạch chéo.
+
+**Trên bản mobile không có menu gạch chéo** — BlockSuite không đăng ký nó cho phạm vi mobile. Các
+khối cờ vì thế được chèn từ nút **+** của thanh công cụ bàn phím, nhóm "Cờ vua".
+
+**Bảng trắng (edgeless) mặc định chỉ đọc trên điện thoại.** Bật ở Settings → Experimental features
+→ mobile edgeless editing nếu cần vẽ trên bảng.

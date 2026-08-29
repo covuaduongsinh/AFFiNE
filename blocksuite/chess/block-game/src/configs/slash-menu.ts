@@ -6,13 +6,13 @@ import type { BlockModel } from '@blocksuite/store';
 import { EMPTY_PGN } from '../model.js';
 
 /** A short illustrative game so a fresh block is not a blank rectangle. */
-const SAMPLE_PGN = `[Event "Scholar's mate"]
+export const SAMPLE_PGN = `[Event "Scholar's mate"]
 [Result "1-0"]
 
 1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6?? {Guarding f7 was essential.} 4. Qxf7# 1-0
 `;
 
-function insertGameAfter(model: BlockModel, pgn: string) {
+export function insertGameAfter(model: BlockModel, pgn: string) {
   const { store } = model;
   const parent = store.getParent(model);
   if (!parent) return;

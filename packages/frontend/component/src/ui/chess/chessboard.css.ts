@@ -31,8 +31,17 @@ export const board = style({
   borderRadius: 4,
   overflow: 'hidden',
   userSelect: 'none',
+  // A read-only board should still scroll the page under a finger.
   touchAction: 'manipulation',
   selectors: {
+    // Once pieces can be picked up, the board has to own vertical gestures.
+    // `manipulation` only suppresses double-tap zoom; the page scroller still
+    // claims a downward drag, fires pointercancel, and the move is lost
+    // half-way through. Dragging a piece is the whole interaction, so it wins
+    // over scrolling for as long as the finger is on the board.
+    '&[data-interactive="true"]': {
+      touchAction: 'none',
+    },
     '[data-theme="dark"] &': {
       vars: {
         '--chess-square-light': '#7d7266',

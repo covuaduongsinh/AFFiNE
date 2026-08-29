@@ -1,3 +1,4 @@
+import { ChessKeyboardToolbarExtension } from '@affine/core/blocksuite/view-extensions/mobile/chess-keyboard-tools';
 import { KeyboardToolbarExtension } from '@affine/core/blocksuite/view-extensions/mobile/keyboard-toolbar-extension';
 import { MobileFeatureFlagControl } from '@affine/core/blocksuite/view-extensions/mobile/mobile-feature-flag-control';
 import {
@@ -27,6 +28,10 @@ export class MobileViewExtension extends ViewExtensionProvider<MobileViewOptions
     if (framework) {
       context.register(KeyboardToolbarExtension(framework));
     }
+
+    // The slash menu is not registered on mobile scopes, so without this the
+    // chess blocks can be read on a phone but never inserted.
+    context.register(ChessKeyboardToolbarExtension());
 
     context.register(MobileFeatureFlagControl);
   }

@@ -1,3 +1,4 @@
+import { Modal } from '@affine/component';
 import { Chessboard } from '@affine/component/ui/chess';
 import { ChessCoachService } from '@affine/core/modules/chess-coach';
 import { useSignalValue } from '@affine/core/modules/doc-info/utils';
@@ -40,6 +41,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { formatScore, labelForPath, splitMoveComment } from './analysis-ui';
 import * as styles from './chess-game-view.css';
+import { ChessCoachPanel } from './coach-panel';
 import { EvalBar } from './eval-bar';
 import { guardFieldPointer, nestedFieldEvents } from './field-guard';
 import { useChessAnalysis } from './use-chess-analysis';
@@ -388,6 +390,8 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
     stop,
   } = analysis;
   const [scanDepth, setScanDepth] = useState(14);
+  /** Mobile only: the coach has no sidebar to live in, so it gets a sheet. */
+  const [coachOpen, setCoachOpen] = useState(false);
 
   const [selected, setSelected] = useState<string | null>(null);
   /** `null` when the PGN editor is closed; the draft text when it is open. */
@@ -455,6 +459,14 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
 
   const openCoach = useCallback(() => {
     activate();
+    // The coach lives in a right sidebar tab, and the mobile document page has
+    // no sidebar to open — the tab is registered only by the desktop detail
+    // page, so this button did nothing at all on a phone. Give it a sheet
+    // instead; the panel is already fluid and needs no changes to fit one.
+    if (BUILD_CONFIG.isMobileEdition) {
+      setCoachOpen(true);
+      return;
+    }
     workbenchService?.workbench.openSidebar();
     viewService?.view.activeSidebarTab('chess-coach');
   }, [activate, viewService, workbenchService]);
@@ -991,6 +1003,19 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
           onCancel={() => setDraft(null)}
           autoFocus
         />
+      )}
+
+      {BUILD_CONFIG.isMobileEdition && (
+        <Modal
+          open={coachOpen}
+          onOpenChange={setCoachOpen}
+          title="Chess coach"
+          height="72vh"
+          contentOptions={{ style: { padding: 12 } }}
+          data-testid="chess-coach-sheet"
+        >
+          <ChessCoachPanel />
+        </Modal>
       )}
     </div>
   );

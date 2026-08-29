@@ -8,6 +8,11 @@ export {
   writeFenceBody,
 } from './adapters/obsidian-fence.js';
 export { ChessBoardBlockComponent } from './board-block.js';
+export {
+  insertBoardAfter,
+  insertExerciseAfter,
+  KINGS_ONLY_FEN,
+} from './configs/slash-menu.js';
 export { EdgelessChessBoardBlockComponent } from './edgeless-board-block.js';
 export { effects } from './effects.js';
 export {

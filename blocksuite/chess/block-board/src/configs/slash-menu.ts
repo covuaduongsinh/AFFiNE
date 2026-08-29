@@ -13,7 +13,10 @@ interface InsertOptions {
 }
 
 /** Insert a board directly after `model`. */
-function insertBoardAfter(model: BlockModel, options: InsertOptions = {}) {
+export function insertBoardAfter(
+  model: BlockModel,
+  options: InsertOptions = {}
+) {
   const { store } = model;
   const parent = store.getParent(model);
   if (!parent) return;
@@ -46,7 +49,7 @@ function insertBoardAfter(model: BlockModel, options: InsertOptions = {}) {
  * following siblings instead, and travels to Markdown as a plain heading, so
  * the exercise survives a trip back out to Obsidian.
  */
-function insertExerciseAfter(model: BlockModel) {
+export function insertExerciseAfter(model: BlockModel) {
   const { store } = model;
   const parent = store.getParent(model);
   if (!parent) return;
@@ -81,7 +84,7 @@ function insertExerciseAfter(model: BlockModel) {
 }
 
 /** Kings are mandatory in a legal FEN, so "empty" means kings only. */
-const KINGS_ONLY_FEN = '4k3/8/8/8/8/8/8/4K3 w - - 0 1';
+export const KINGS_ONLY_FEN = '4k3/8/8/8/8/8/8/4K3 w - - 0 1';
 
 /** Edgeless text has no room for a board, so the items hide there. */
 const notInEdgelessText = (model: BlockModel) =>

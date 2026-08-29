@@ -3,6 +3,8 @@ import { cssVar } from '@toeverything/theme';
 import { cssVarV2 } from '@toeverything/theme/v2';
 import { style } from '@vanilla-extract/css';
 
+import { touchMark, touchTarget } from './touch.css';
+
 export const container = style({
   display: 'flex',
   flexDirection: 'column',
@@ -45,18 +47,24 @@ export const paletteRow = style({
   },
 });
 
-export const paletteButton = style({
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: 2,
-});
+export const paletteButton = style([
+  touchTarget,
+  {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 2,
+  },
+]);
 
-export const pieceBox = style({
-  display: 'block',
-  width: 22,
-  height: 22,
-});
+export const pieceBox = style([
+  touchMark,
+  {
+    display: 'block',
+    width: 22,
+    height: 22,
+  },
+]);
 
 export const setupRow = style({
   display: 'flex',
@@ -71,22 +79,29 @@ export const setupRow = style({
  * A colour swatch paints itself, so it carries no label — its accessible name
  * comes from `title`/`aria-label` on the button.
  */
-export const colorSwatch = style({
-  minWidth: 24,
-  width: 24,
-  padding: 0,
-  selectors: {
-    '&::after': {
-      content: '""',
-      display: 'block',
-      width: 14,
-      height: 14,
-      margin: '0 auto',
-      borderRadius: 3,
-      backgroundColor: 'var(--chess-swatch)',
+export const colorSwatch = style([
+  touchTarget,
+  {
+    minWidth: 24,
+    width: 24,
+    padding: 0,
+    selectors: {
+      '&::after': {
+        content: '""',
+        display: 'block',
+        width: 14,
+        height: 14,
+        margin: '0 auto',
+        borderRadius: 3,
+        backgroundColor: 'var(--chess-swatch)',
+        // The dot is the only thing a finger can aim at; grow it with the button.
+        '@media': {
+          '(pointer: coarse)': { width: 24, height: 24 },
+        },
+      },
     },
   },
-});
+]);
 
 export const castleLabel = style({
   display: 'inline-flex',
@@ -101,15 +116,18 @@ export const castleLabel = style({
  * (theme/global.css), which leaves a bare checkbox with nothing to draw —
  * invisible. Restore it explicitly.
  */
-export const castleCheckbox = style({
-  appearance: 'auto',
-  WebkitAppearance: 'checkbox',
-  width: 14,
-  height: 14,
-  margin: 0,
-  accentColor: cssVarV2('button/primary'),
-  cursor: 'pointer',
-});
+export const castleCheckbox = style([
+  touchMark,
+  {
+    appearance: 'auto',
+    WebkitAppearance: 'checkbox',
+    width: 14,
+    height: 14,
+    margin: 0,
+    accentColor: cssVarV2('button/primary'),
+    cursor: 'pointer',
+  },
+]);
 
 export const fenInput = style({
   width: '100%',

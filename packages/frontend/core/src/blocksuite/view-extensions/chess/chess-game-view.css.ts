@@ -3,6 +3,8 @@ import { cssVar } from '@toeverything/theme';
 import { cssVarV2 } from '@toeverything/theme/v2';
 import { style } from '@vanilla-extract/css';
 
+import { touchHeight, touchTarget, touchTypeSize } from './touch.css';
+
 export const container = style({
   display: 'flex',
   flexWrap: 'wrap',
@@ -66,26 +68,29 @@ export const controls = style({
   alignItems: 'center',
 });
 
-export const controlButton = style({
-  border: `1px solid ${cssVarV2('layer/insideBorder/border')}`,
-  background: 'transparent',
-  color: cssVarV2('text/primary'),
-  borderRadius: 4,
-  minWidth: 32,
-  height: 28,
-  cursor: 'pointer',
-  fontSize: cssVar('fontSm'),
-  lineHeight: 1,
-  selectors: {
-    '&:hover:not(:disabled)': {
-      backgroundColor: cssVarV2('layer/background/hoverOverlay'),
-    },
-    '&:disabled': {
-      opacity: 0.4,
-      cursor: 'default',
+export const controlButton = style([
+  touchTarget,
+  {
+    border: `1px solid ${cssVarV2('layer/insideBorder/border')}`,
+    background: 'transparent',
+    color: cssVarV2('text/primary'),
+    borderRadius: 4,
+    minWidth: 32,
+    height: 28,
+    cursor: 'pointer',
+    fontSize: cssVar('fontSm'),
+    lineHeight: 1,
+    selectors: {
+      '&:hover:not(:disabled)': {
+        backgroundColor: cssVarV2('layer/background/hoverOverlay'),
+      },
+      '&:disabled': {
+        opacity: 0.4,
+        cursor: 'default',
+      },
     },
   },
-});
+]);
 
 export const moveList = style({
   flex: '1 1 auto',
@@ -172,25 +177,28 @@ export const editor = style({
   borderTop: `1px solid ${cssVarV2('layer/insideBorder/border')}`,
 });
 
-export const editorTextarea = style({
-  width: '100%',
-  minHeight: 140,
-  resize: 'vertical',
-  padding: 8,
-  borderRadius: 4,
-  border: `1px solid ${cssVarV2('layer/insideBorder/border')}`,
-  backgroundColor: cssVarV2('layer/background/primary'),
-  color: cssVarV2('text/primary'),
-  fontFamily: cssVar('fontCodeFamily'),
-  fontSize: cssVar('fontXs'),
-  lineHeight: 1.6,
-  selectors: {
-    '&:focus': {
-      outline: 'none',
-      borderColor: cssVarV2('layer/insideBorder/primaryBorder'),
+export const editorTextarea = style([
+  touchTypeSize,
+  {
+    width: '100%',
+    minHeight: 140,
+    resize: 'vertical',
+    padding: 8,
+    borderRadius: 4,
+    border: `1px solid ${cssVarV2('layer/insideBorder/border')}`,
+    backgroundColor: cssVarV2('layer/background/primary'),
+    color: cssVarV2('text/primary'),
+    fontFamily: cssVar('fontCodeFamily'),
+    fontSize: cssVar('fontXs'),
+    lineHeight: 1.6,
+    selectors: {
+      '&:focus': {
+        outline: 'none',
+        borderColor: cssVarV2('layer/insideBorder/primaryBorder'),
+      },
     },
   },
-});
+]);
 
 export const editorFooter = style({
   display: 'flex',
@@ -206,22 +214,25 @@ export const editorStatus = style({
   color: cssVarV2('text/secondary'),
 });
 
-export const primaryButton = style({
-  border: 'none',
-  borderRadius: 4,
-  height: 28,
-  padding: '0 12px',
-  cursor: 'pointer',
-  fontSize: cssVar('fontSm'),
-  backgroundColor: cssVarV2('button/primary'),
-  color: cssVarV2('button/pureWhiteText'),
-  selectors: {
-    '&:disabled': {
-      opacity: 0.4,
-      cursor: 'default',
+export const primaryButton = style([
+  touchTarget,
+  {
+    border: 'none',
+    borderRadius: 4,
+    height: 28,
+    padding: '0 12px',
+    cursor: 'pointer',
+    fontSize: cssVar('fontSm'),
+    backgroundColor: cssVarV2('button/primary'),
+    color: cssVarV2('button/pureWhiteText'),
+    selectors: {
+      '&:disabled': {
+        opacity: 0.4,
+        cursor: 'default',
+      },
     },
   },
-});
+]);
 
 /** Annotation tools for whichever move is currently selected. */
 export const annotations = style({
@@ -240,42 +251,49 @@ export const nagRow = style({
   alignItems: 'center',
 });
 
-export const nagButton = style({
-  minWidth: 30,
-  height: 26,
-  borderRadius: 4,
-  cursor: 'pointer',
-  fontSize: cssVar('fontSm'),
-  fontWeight: 600,
-  border: `1px solid ${cssVarV2('layer/insideBorder/border')}`,
-  background: 'transparent',
-  color: cssVarV2('text/primary'),
-  selectors: {
-    '&:hover': { backgroundColor: cssVarV2('layer/background/hoverOverlay') },
+export const nagButton = style([
+  touchTarget,
+  {
+    minWidth: 30,
+    height: 26,
+    borderRadius: 4,
+    cursor: 'pointer',
+    fontSize: cssVar('fontSm'),
+    fontWeight: 600,
+    border: `1px solid ${cssVarV2('layer/insideBorder/border')}`,
+    background: 'transparent',
+    color: cssVarV2('text/primary'),
+    selectors: {
+      '&:hover': { backgroundColor: cssVarV2('layer/background/hoverOverlay') },
+    },
   },
-});
+]);
 
 export const nagButtonActive = style({
   backgroundColor: cssVarV2('layer/background/hoverOverlay'),
   borderColor: cssVarV2('layer/insideBorder/primaryBorder'),
 });
 
-export const commentInput = style({
-  width: '100%',
-  height: 28,
-  padding: '0 8px',
-  borderRadius: 4,
-  border: `1px solid ${cssVarV2('layer/insideBorder/border')}`,
-  backgroundColor: cssVarV2('layer/background/primary'),
-  color: cssVarV2('text/primary'),
-  fontSize: cssVar('fontXs'),
-  selectors: {
-    '&:focus': {
-      outline: 'none',
-      borderColor: cssVarV2('layer/insideBorder/primaryBorder'),
+export const commentInput = style([
+  touchTypeSize,
+  touchHeight,
+  {
+    width: '100%',
+    height: 28,
+    padding: '0 8px',
+    borderRadius: 4,
+    border: `1px solid ${cssVarV2('layer/insideBorder/border')}`,
+    backgroundColor: cssVarV2('layer/background/primary'),
+    color: cssVarV2('text/primary'),
+    fontSize: cssVar('fontXs'),
+    selectors: {
+      '&:focus': {
+        outline: 'none',
+        borderColor: cssVarV2('layer/insideBorder/primaryBorder'),
+      },
     },
   },
-});
+]);
 
 export const dangerButton = style({
   color: cssVarV2('status/error'),

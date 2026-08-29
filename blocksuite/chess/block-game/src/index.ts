@@ -1,4 +1,5 @@
 export { chessGameMarkdownAdapterMatcher } from './adapters/markdown.js';
+export { insertGameAfter, SAMPLE_PGN } from './configs/slash-menu.js';
 export { effects } from './effects.js';
 export { ChessGameBlockComponent } from './game-block.js';
 export {
