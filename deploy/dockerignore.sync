@@ -1,0 +1,31 @@
+# Copied to the build-context root as `.dockerignore` — Docker reads it from
+# there and nowhere else, so a copy left in deploy/ would be silently ignored.
+# Build context is packages/chess/sync. The image needs package.json and src/.
+
+# 9.4 MB of yarn hoisting artefacts, and an @node-rs/argon2 native binary
+# picked for whichever machine ran yarn. The image installs its own against its
+# own glibc; a copied one either fails to load or loads the wrong ABI. This
+# line is the difference between a working image and an argon2 crash on the
+# first sign-in.
+node_modules/
+
+# `extends: "../../../tsconfig.node.json"`, a path that does not exist inside
+# the image. tsx is content with no tsconfig; it is not content with one whose
+# extends target is missing.
+tsconfig.json
+
+# Import vitest and socket.io-client, which --omit=dev does not install.
+**/*.spec.ts
+src/test-utils.ts
+vitest.config.ts
+
+# Local runtime state. The real data directory is a mount.
+data/
+*.log
+
+# Not source.
+.git/
+.gitignore
+README.md
+dist/
+*.tar.gz

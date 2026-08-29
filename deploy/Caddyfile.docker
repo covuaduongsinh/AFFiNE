@@ -1,0 +1,92 @@
+# Origin server inside the Dokploy stack. Deployed to /srv/affine/conf/Caddyfile.
+# Kept outside docker-compose.yml so the bcrypt hash's `$` characters are never
+# subject to Compose variable interpolation.
+
+{
+	# Traefik terminates TLS. This is a plain HTTP origin on an internal
+	# network; if Caddy tried to get its own certificate it would fail the
+	# challenge and log about it forever.
+	auto_https off
+	# Nothing needs the admin API, and it would otherwise listen on :2019.
+	admin off
+	servers {
+		# So access logs record the real client instead of Traefik's bridge IP.
+		trusted_proxies static private_ranges
+	}
+}
+
+:80 {
+	log {
+		output stdout
+		format console
+	}
+
+	# Docker's healthcheck carries no credentials, so it needs one door that
+	# basic auth does not cover. This route serves no file and reaches no
+	# backend.
+	@health path /_healthz
+	handle @health {
+		respond "ok" 200
+	}
+
+	# This password is load-bearing, not decorative. Two holes are still open in
+	# the app: signing in *creates* the account (no allowlist, no admin, no
+	# verification), and setBlob uses the client's filename as a path component
+	# unchecked, which is an arbitrary file write. Until both are fixed this
+	# line is the only thing between them and the internet.
+	# Generate the hash with:
+	#   docker run --rm caddy:2-alpine caddy hash-password --plaintext '...'
+	@protected not path /_healthz
+	basic_auth @protected {
+		chess $2a$14$REPLACE_WITH_YOUR_OWN_BCRYPT_HASH
+	}
+
+	# Roughly 70 MB of the 123 MB bundle is compressible; the .wasm files alone
+	# are 35 MB. Caddy skips already-compressed media types on its own.
+	encode zstd gzip
+
+	# /health is listed so the backend stays reachable through the front door.
+	# Without it the static handler answers, and a health check would be reading
+	# selfhost.html and calling it success.
+	@api path /api/* /graphql /graphql/* /socket.io/* /health
+	handle @api {
+		# reverse_proxy handles the WebSocket upgrade with no extra directives
+		# and preserves the inbound Host, which server.ts uses to build the
+		# GraphQL `origin`.
+		reverse_proxy sync:3010 {
+			# Caddy would otherwise stamp this with the scheme it saw, which is
+			# http, and the app would start writing http:// URLs into the
+			# database behind an https:// front door. Traefik only ever hands
+			# us requests that arrived on websecure, so this is a constant.
+			header_up X-Forwarded-Proto https
+		}
+	}
+
+	handle {
+		root * /srv/affine-web
+
+		# no-cache is the default and hashed paths opt into immutable, not the
+		# other way round. Reversed, a request for `/` or `/workspace/x` is
+		# rewritten to selfhost.html *after* the header matchers have run
+		# against the original path, so the entry document ships with no
+		# Cache-Control at all and browsers cache it heuristically — the
+		# failure where a deploy never reaches anyone.
+		@immutable path /js/* /assets/* /static/* /fonts/* *.wasm *.css
+		header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+		@volatile not path /js/* /assets/* /static/* /fonts/* *.wasm *.css
+		header @volatile Cache-Control "no-cache"
+
+		# selfhost.html, never index.html. index.html is the AFFiNE *Cloud*
+		# entry; selfhost.html carries <meta name="env:isSelfHosted">, which is
+		# what makes the app treat this origin as its server. The explicit
+		# `index` is not redundant: `/` resolves to a directory, try_files
+		# considers a directory to exist, and file_server then falls back to
+		# its default index list — which starts with index.html. Deleting that
+		# file at extraction time is the other half of this.
+		try_files {path} /selfhost.html
+		file_server {
+			index selfhost.html
+		}
+	}
+}

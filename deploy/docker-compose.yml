@@ -1,0 +1,98 @@
+# Deployed through Dokploy as a Compose service with sourceType "raw".
+#
+# Two Dokploy behaviours this file works around:
+#
+#  1. The build runs inside the Dokploy container, which bind-mounts only
+#     /etc/dokploy — and at the same path, so a context there resolves to the
+#     same directory for the client and for the daemon. /srv is invisible to
+#     it: the first deploy failed with `path "/srv/affine/sync" not found`.
+#  2. Before every raw deploy it runs `rm -rf /etc/dokploy/compose/<appName>/code`
+#     and writes back only docker-compose.yml. Nothing else survives there, so
+#     everything that must persist lives in /etc/dokploy/affine instead —
+#     visible to the build, and outside the directory that gets wiped.
+#  3. It injects the Traefik labels itself, from the Domain record. There are
+#     deliberately none in this file — setting the domain on service `web`,
+#     port 80, is what routes affine.dsc.edu.vn here.
+#
+# Dokploy also re-serialises this YAML, so the deployed copy has no comments.
+# This file is the source of truth.
+
+services:
+  sync:
+    build:
+      # Absolute on purpose, see (1). rsync populates this directory.
+      context: /etc/dokploy/affine/sync
+      dockerfile: Dockerfile
+    # An explicit tag, so `docker images` is readable and the image can be
+    # rebuilt or rolled back by hand independently of Dokploy.
+    image: chess-sync:0.27.0
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      # 0.0.0.0, not 127.0.0.1: inside a container 127.0.0.1 is that
+      # container's own loopback and `web` could never reach it. Safe only
+      # because nothing below publishes a port — the backend is reachable on
+      # the compose network and nowhere else.
+      CHESS_SYNC_HOST: "0.0.0.0"
+      CHESS_SYNC_PORT: "3010"
+      # Absolute. cli.ts resolves a relative value against the working
+      # directory, and a wrong guess is silent: PGlite creates an empty
+      # database and every account and document reads as deleted.
+      CHESS_SYNC_DATA_DIR: /data
+    volumes:
+      # pg/, blobs/, jwt-secret. A host bind mount rather than a named volume:
+      # the volume's real name would be <appName>_chess-data, and appName gets
+      # a random suffix that is unknowable until after the service is created —
+      # while the data restore has to happen before first boot. A path we chose
+      # also cannot be taken away by `compose.delete` with deleteVolumes.
+      - ${AFFINE_DATA_DIR:-/etc/dokploy/affine/data}:/data
+    # cli.ts force-exits 10 seconds after SIGTERM. Docker's default stop
+    # timeout is also 10 seconds, so the two race and SIGKILL can land in the
+    # middle of PGlite's flush. 25s gives the flush room and still bounds a
+    # hung shutdown.
+    stop_grace_period: 25s
+    # Deliberately no `ports:`. Publishing 3010 would put an unauthenticated
+    # account-creation endpoint and an arbitrary file write on the public IP,
+    # bypassing the basic-auth gate entirely.
+    expose:
+      - "3010"
+
+  web:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      sync:
+        # A deploy that "succeeds" while the backend is dead is worse than one
+        # that fails. The image's HEALTHCHECK bounds this before Compose gives
+        # up and the deploy reports an error.
+        condition: service_healthy
+    volumes:
+      # The prebuilt bundle. Read-only: nothing here should ever write to it,
+      # and it puts the bundle out of reach of the file-write bug.
+      - ${AFFINE_WEB_DIR:-/etc/dokploy/affine/web}:/srv/affine-web:ro
+      - ${AFFINE_CONF_DIR:-/etc/dokploy/affine/conf}/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    healthcheck:
+      # /_healthz is the one path the Caddyfile leaves outside basic auth.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/_healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      # `default` reaches sync. `dokploy-network` is how Traefik reaches this
+      # service. sync is on `default` only, which is what keeps it off Traefik.
+      - default
+      - dokploy-network
+
+volumes:
+  caddy-data:
+  caddy-config:
+
+networks:
+  # Created by Dokploy at install time. Declared explicitly rather than relying
+  # on Dokploy's injection, so routing does not silently depend on the Domain
+  # record having been created first.
+  dokploy-network:
+    external: true
