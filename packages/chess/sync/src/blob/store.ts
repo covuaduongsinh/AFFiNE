@@ -1,13 +1,26 @@
 import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { dirname, resolve, sep } from 'node:path';
 
 import { and, eq } from 'drizzle-orm';
 
 import { blobs } from '../db/schema.js';
+import { HttpError } from '../errors.js';
 import type { AppState } from '../types.js';
 
 export function blobPath(dataDir: string, workspaceId: string, key: string) {
-  return join(dataDir, 'blobs', workspaceId, key);
+  const root = resolve(dataDir, 'blobs');
+  const path = resolve(root, workspaceId, key);
+  // The key is whatever the client called the file — `setBlob` passes the
+  // upload's own filename straight through. `join` walks `..` without
+  // complaint, so a crafted name wrote wherever this process could write.
+  //
+  // Containment rather than a character allowlist: it holds for any key format
+  // the app decides to use later, and cannot reject a legitimate one because
+  // the pattern was guessed too narrowly.
+  if (path !== root && !path.startsWith(root + sep)) {
+    throw new HttpError(400, 'INVALID_INPUT', 'invalid blob key');
+  }
+  return path;
 }
 
 export async function writeBlobFile(

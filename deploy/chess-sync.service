@@ -20,6 +20,13 @@ Environment=CHESS_SYNC_PORT=3010
 # Absolute. cli.ts resolves against the working directory, and a wrong guess
 # opens an empty database that looks exactly like total data loss.
 Environment=CHESS_SYNC_DATA_DIR=/var/lib/chess-sync
+# The address people type. Absolute URLs get written into the database, and
+# deriving them from a client-set header means one spoofed request leaves a
+# wrong one there permanently.
+Environment=CHESS_SYNC_PUBLIC_ORIGIN=https://affine.example.vn
+# Signing in creates the account. This list is what stops that being an open
+# door; leave it empty only on loopback. Comma-separated.
+Environment=CHESS_SYNC_ALLOWED_EMAILS=you@example.com
 
 Restart=on-failure
 RestartSec=3

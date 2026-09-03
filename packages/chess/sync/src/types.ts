@@ -24,6 +24,10 @@ export type AppState = {
   host: string;
   port: number;
   baseUrl: string;
+  /** Configured public address, or '' to derive one per request. */
+  publicOrigin: string;
+  /** Lower-cased emails allowed to sign in. Empty means anyone. */
+  allowedEmails: string[];
 };
 
 export type GqlContext = {

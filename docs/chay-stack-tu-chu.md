@@ -37,18 +37,20 @@ node scripts/serve-dist.mjs
 
 Mở `http://localhost:5173`, đăng nhập, tạo workspace và chọn server **Chess Sync**.
 
-**Đăng nhập chính là đăng ký.** Email chưa có thì tài khoản được tạo ngay lúc đăng nhập đầu tiên, mật khẩu 8–32 ký tự. Không có allowlist, không có vai trò quản trị, không xác minh email.
+**Đăng nhập chính là đăng ký.** Email chưa có thì tài khoản được tạo ngay lúc đăng nhập đầu tiên, mật khẩu 8–32 ký tự. Không có vai trò quản trị, không xác minh email. Khi mở ra mạng thì đặt `CHESS_SYNC_ALLOWED_EMAILS` để chặn — xem mục dưới.
 
 ## Biến môi trường
 
-| Biến                  | Nơi đọc        | Ý nghĩa                                                                     |
-| --------------------- | -------------- | --------------------------------------------------------------------------- |
-| `CHESS_SYNC_DATA_DIR` | CLI standalone | Thư mục dữ liệu. Electron **không** đọc biến này khi tự chạy server nhúng   |
-| `CHESS_SYNC_HOST`     | cả hai         | Địa chỉ lắng nghe, mặc định `127.0.0.1`                                     |
-| `CHESS_SYNC_PORT`     | cả hai         | Cổng, mặc định `3010`                                                       |
-| `CHESS_SYNC_URL`      | Electron       | Trỏ app desktop vào một backend có sẵn, và **không** bật server nhúng       |
-| `API_ORIGIN`          | serve-dist     | Backend để proxy tới, mặc định `127.0.0.1:3010`                             |
-| `APP_HTML`            | serve-dist     | Đặt `index.html` để phục vụ bản không-self-hosted. Mặc định `selfhost.html` |
+| Biến                        | Nơi đọc        | Ý nghĩa                                                                                            |
+| --------------------------- | -------------- | -------------------------------------------------------------------------------------------------- |
+| `CHESS_SYNC_DATA_DIR`       | CLI standalone | Thư mục dữ liệu. Electron **không** đọc biến này khi tự chạy server nhúng                          |
+| `CHESS_SYNC_HOST`           | cả hai         | Địa chỉ lắng nghe, mặc định `127.0.0.1`                                                            |
+| `CHESS_SYNC_PORT`           | cả hai         | Cổng, mặc định `3010`                                                                              |
+| `CHESS_SYNC_URL`            | Electron       | Trỏ app desktop vào một backend có sẵn, và **không** bật server nhúng                              |
+| `CHESS_SYNC_PUBLIC_ORIGIN`  | cả hai         | Địa chỉ công khai. Quyết định URL ghi vào cơ sở dữ liệu, cờ `secure` của cookie, và danh sách CORS |
+| `CHESS_SYNC_ALLOWED_EMAILS` | cả hai         | Danh sách email được phép đăng nhập, ngăn cách bằng dấu phẩy. Trống = ai cũng đăng ký được         |
+| `API_ORIGIN`                | serve-dist     | Backend để proxy tới, mặc định `127.0.0.1:3010`                                                    |
+| `APP_HTML`                  | serve-dist     | Đặt `index.html` để phục vụ bản không-self-hosted. Mặc định `selfhost.html`                        |
 
 ## Dùng chung một backend cho desktop và trình duyệt
 
@@ -62,28 +64,23 @@ Khi đó Electron bỏ qua server nhúng và đăng ký thẳng địa chỉ nà
 
 Lưu ý: server chung sẽ **không** trở thành server mặc định trong app — phải chọn tay ở bộ chọn workspace. Đó là do phía client cứng id server mặc định, không phải lỗi cấu hình.
 
-## Mở ra mạng: nợ bảo mật phải trả trước
+## Mở ra mạng
 
-Có hai lỗ chưa vá, và cả hai chỉ nguy hiểm khi server với tới được từ ngoài. Chừng nào còn một
-lớp xác thực đứng trước (mật khẩu ở Caddy, hoặc VPN) thì chưa ai khai thác được. **Đừng gỡ lớp đó
-trước khi vá xong hai mục đầu.**
+Ba lỗ nghiêm trọng nhất **đã vá**:
 
-| # | Lỗ | Ở đâu |
-| - | -- | ----- |
-| 1 | **Ghi file tuỳ ý.** `setBlob` lấy thẳng tên file client gửi làm khoá rồi ghép vào đường dẫn không kiểm tra. Tên chứa `../../` ghi ra ngoài cây blob, tới bất cứ đâu tiến trình có quyền | `graphql/resolvers.ts:684`, `blob/store.ts:9-11` |
-| 2 | **Đăng nhập chính là đăng ký.** Không allowlist, không admin, không xác minh email. Dùng một mình thì một danh sách một dòng đóng gần hết rủi ro | `auth/routes.ts:126-144` |
-| 3 | **`ctx.origin` đọc từ header client gửi** và bị ghi vào cơ sở dữ liệu qua `uploadAvatar`. Sai một lần là có `http://` nằm vĩnh viễn trong dữ liệu, trình duyệt chặn vì nội dung hỗn hợp. Hiện `blobs/` còn rỗng nên chưa có URL nào bị ghi hỏng — vá trước khi tải ảnh đại diện đầu tiên là thoát hẳn | `server.ts:53-64`, `resolvers.ts:807` |
-| 4 | Cookie phiên thiếu `secure`; CORS `origin: true` phản chiếu mọi origin kèm credentials | `auth/session.ts:26-29`, `server.ts:37` |
-| 5 | Không có giới hạn tần suất ở đâu cả. Argon2 chạy mỗi lần thử đăng nhập là đòn bẩy CPU | toàn bộ package |
+| Đã vá                             | Trước đây                                                                                                                                                               |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Ghi file tuỳ ý**                | `setBlob` lấy tên file client gửi làm đường dẫn. Tên chứa `../../` ghi ra ngoài cây blob. Giờ `blobPath` kiểm tra đường dẫn giải ra có còn nằm trong thư mục blob không |
+| **Đăng nhập chính là đăng ký**    | Ai vào được cổng cũng tạo được tài khoản. Giờ có `CHESS_SYNC_ALLOWED_EMAILS`, kiểm **trước** cả truy vấn lẫn argon2, nên một email lạ chỉ tốn một phép so chuỗi         |
+| **URL sai ghi vào cơ sở dữ liệu** | `ctx.origin` dựng từ header client gửi rồi bị `uploadAvatar` ghi vào bảng. Giờ `CHESS_SYNC_PUBLIC_ORIGIN` thắng, header chỉ còn là đường lui khi chạy cục bộ            |
+| **Cookie thiếu `secure`**         | Giờ tự bật khi `PUBLIC_ORIGIN` là https, và tự tắt khi chạy http cục bộ                                                                                                 |
+| **CORS `origin: true`**           | Phản chiếu mọi origin kèm credentials. Giờ là danh sách cụ thể, **có kèm `assets://.` và `assets://another-host`** — thiếu hai cái đó là app desktop mất đăng nhập      |
 
-Nếu sau này vá mục 4 bằng danh sách CORS cụ thể, **phải kèm cả origin của Electron** (`assets://.`
-và `assets://another-host`, xem `packages/frontend/apps/electron/src/shared/internal-origin.ts`),
-nếu không app desktop mất khả năng đăng nhập.
+Để trống `CHESS_SYNC_ALLOWED_EMAILS` thì hành vi như cũ, để bản chạy trên máy và server nhúng
+trong Electron không phải cấu hình gì.
 
-Còn một điều không phải lỗ nhưng nên biết: dữ liệu tài liệu đi qua cột `bytea`, và
-`db/schema.ts:18-20` trả `Uint8Array` cho driver. PGlite nhận được, nhưng node-postgres chỉ nhận
-diện `Buffer` — nên nếu có ngày đổi sang Postgres thật mà quên sửa chỗ này, dữ liệu hỏng âm thầm
-chứ không báo lỗi.
+**Còn nợ:** chưa có giới hạn tần suất, và CSRF chỉ kiểm ở route đăng xuất. Với danh sách email
+thì hai thứ đó bớt gấp — một email lạ bị chặn trước khi kịp tốn CPU băm mật khẩu.
 
 ## Rủi ro đã biết: schema không có migration
 

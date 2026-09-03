@@ -6,7 +6,7 @@ import { createSchema, createYoga } from 'graphql-yoga';
 import { registerAuthRoutes } from './auth/routes.js';
 import { resolveUser } from './auth/session.js';
 import { registerBlobRoutes } from './blob/routes.js';
-import { type ChessSyncConfig,loadConfig } from './config.js';
+import { type ChessSyncConfig, loadConfig } from './config.js';
 import { openDatabase } from './db/client.js';
 import { errorBody, HttpError } from './errors.js';
 import { createResolvers } from './graphql/resolvers.js';
@@ -29,12 +29,33 @@ export async function startChessSync(
     db,
     host: config.host,
     port: config.port,
-    baseUrl: `http://${config.host}:${config.port}`,
+    baseUrl: config.publicOrigin || `http://${config.host}:${config.port}`,
+    publicOrigin: config.publicOrigin ?? '',
+    allowedEmails: config.allowedEmails,
   };
 
-  const app = Fastify({ logger: false, bodyLimit: 104857600 });
+  // trustProxy so request.ip is the client rather than the proxy's bridge
+  // address — it is what any future rate limit would key on, and what makes a
+  // log entry name someone real.
+  const app = Fastify({
+    logger: false,
+    bodyLimit: 104857600,
+    trustProxy: true,
+  });
   await app.register(cookie);
-  await app.register(cors, { origin: true, credentials: true });
+  // `origin: true` reflects whatever Origin arrives and allows credentials
+  // with it, which lets any page a signed-in user visits call this API as
+  // them. Narrow it once we know our own address.
+  //
+  // The desktop app is not served from that address: its renderer runs on the
+  // `assets:` scheme (electron/src/shared/internal-origin.ts). Leave those out
+  // and the Windows app cannot sign in.
+  await app.register(cors, {
+    origin: config.publicOrigin
+      ? [config.publicOrigin, 'assets://.', 'assets://another-host']
+      : true,
+    credentials: true,
+  });
 
   app.get('/health', async () => ({ ok: true, version: '0.27.0' }));
 
@@ -51,6 +72,10 @@ export async function startChessSync(
     graphiql: false,
     maskedErrors: false,
     context: async ({ req }): Promise<GqlContext> => {
+      // Configured wins. This origin is written into the database — an avatar
+      // upload stores an absolute URL — so deriving it from a header the
+      // client sets means one spoofed request leaves a wrong URL there for
+      // good. Header sniffing survives only as the local-development fallback.
       const proto =
         typeof req.headers['x-forwarded-proto'] === 'string'
           ? req.headers['x-forwarded-proto']
@@ -60,7 +85,7 @@ export async function startChessSync(
         app,
         state,
         user: await resolveUser(state, req),
-        origin: `${proto}://${host}`,
+        origin: state.publicOrigin || `${proto}://${host}`,
       };
     },
   });
@@ -144,7 +169,12 @@ export async function startChessSync(
   const port =
     typeof address === 'object' && address ? address.port : config.port;
   state.port = port;
-  state.baseUrl = `http://${config.host === '0.0.0.0' ? '127.0.0.1' : config.host}:${port}`;
+  // Behind a proxy the address that matters is the one people type, not the
+  // socket we happened to bind. This is what the desktop app registers as the
+  // server, so a loopback value there would be useless to it.
+  state.baseUrl =
+    config.publicOrigin ||
+    `http://${config.host === '0.0.0.0' ? '127.0.0.1' : config.host}:${port}`;
 
   return {
     baseUrl: state.baseUrl,

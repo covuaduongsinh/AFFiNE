@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { type ChessSyncHandle,startChessSync } from './index.js';
+import { type ChessSyncHandle, startChessSync } from './index.js';
 
 export interface TestServer {
   handle: ChessSyncHandle;

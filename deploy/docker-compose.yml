@@ -39,6 +39,14 @@ services:
       # directory, and a wrong guess is silent: PGlite creates an empty
       # database and every account and document reads as deleted.
       CHESS_SYNC_DATA_DIR: /data
+      # The address people type. Absolute URLs are written into the database —
+      # an avatar upload stores one — and building them from a client-set
+      # header means a single spoofed request leaves a wrong URL there for
+      # good, which the browser then blocks as mixed content.
+      CHESS_SYNC_PUBLIC_ORIGIN: ${AFFINE_PUBLIC_ORIGIN:-}
+      # Signing in creates the account when it does not exist. Comma-separated;
+      # empty means anyone who reaches the port can register.
+      CHESS_SYNC_ALLOWED_EMAILS: ${AFFINE_ALLOWED_EMAILS:-}
     volumes:
       # pg/, blobs/, jwt-secret. A host bind mount rather than a named volume:
       # the volume's real name would be <appName>_chess-data, and appName gets

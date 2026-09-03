@@ -97,10 +97,19 @@ export async function registerAuthRoutes(
     if (!email) {
       return { registered: false, ...PREFLIGHT };
     }
+    const normalized = email.toLowerCase();
+    // Mirror the allowlist here, or this endpoint happily confirms which
+    // addresses hold accounts to anyone who cannot use them anyway.
+    if (
+      state.allowedEmails.length > 0 &&
+      !state.allowedEmails.includes(normalized)
+    ) {
+      return { registered: false, ...PREFLIGHT };
+    }
     const [user] = await state.db.db
       .select({ id: users.id })
       .from(users)
-      .where(eq(users.email, email.toLowerCase()));
+      .where(eq(users.email, normalized));
     return { registered: Boolean(user), ...PREFLIGHT };
   });
 
@@ -118,6 +127,25 @@ export async function registerAuthRoutes(
         );
       }
       const normalized = email.toLowerCase();
+      // Signing in creates the account, so this list is the only thing between
+      // that and whoever can reach the port. Checked before the lookup and
+      // before argon2 on purpose: an unknown address then costs a string
+      // compare, where otherwise every guess buys an attacker one password
+      // hash of this machine's CPU.
+      //
+      // It rejects an already-registered address that is not on the list too.
+      // That is deliberate — if anyone signed up during a window of exposure,
+      // letting them keep the account would defeat the point.
+      if (
+        state.allowedEmails.length > 0 &&
+        !state.allowedEmails.includes(normalized)
+      ) {
+        throw new HttpError(
+          403,
+          'ACTION_FORBIDDEN',
+          'This server is invite-only'
+        );
+      }
       const [existing] = await state.db.db
         .select()
         .from(users)
@@ -164,7 +192,7 @@ export async function registerAuthRoutes(
       }
 
       const session = await createSession(state, user.id);
-      setSessionCookies(reply, session.id, user.id, session.csrf);
+      setSessionCookies(state, reply, session.id, user.id, session.csrf);
       return profile;
     } catch (error) {
       if (error instanceof HttpError) return await sendHttpError(reply, error);

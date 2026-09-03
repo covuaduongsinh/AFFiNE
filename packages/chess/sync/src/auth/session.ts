@@ -18,12 +18,21 @@ import type { AppState, UserRow } from '../types.js';
 const COOKIE_MAX_AGE = 2592000;
 
 export function setSessionCookies(
+  state: AppState,
   reply: FastifyReply,
   sessionId: string,
   userId: string,
   csrf: string
 ) {
-  const opts = { path: '/', sameSite: 'lax' as const, maxAge: COOKIE_MAX_AGE };
+  const opts = {
+    path: '/',
+    sameSite: 'lax' as const,
+    maxAge: COOKIE_MAX_AGE,
+    // Tied to the configured address rather than NODE_ENV: what decides this
+    // is whether the URL people actually load is https, and a local run over
+    // plain http must still be able to sign in.
+    secure: state.publicOrigin.startsWith('https://'),
+  };
   reply.setCookie('affine_session', sessionId, { ...opts, httpOnly: true });
   reply.setCookie('affine_user_id', userId, opts);
   reply.setCookie('affine_csrf_token', csrf, opts);

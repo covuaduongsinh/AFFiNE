@@ -1,7 +1,7 @@
 import { and, desc, eq } from 'drizzle-orm';
 import { GraphQLScalarType, Kind } from 'graphql';
 
-import { removeBlobFile,writeBlobFile } from '../blob/store.js';
+import { removeBlobFile, writeBlobFile } from '../blob/store.js';
 import { newId } from '../crypto.js';
 import {
   blobs,
