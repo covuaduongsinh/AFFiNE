@@ -4,6 +4,7 @@ import {
 } from '@blocksuite/affine-ext-loader';
 
 import { chessGameMarkdownAdapterExtension } from './adapters/markdown.js';
+import { chessGamePdfAdapterExtension } from './adapters/pdf.js';
 import { ChessGameBlockSchemaExtension } from './model.js';
 
 export class ChessGameStoreExtension extends StoreExtensionProvider {
@@ -13,5 +14,6 @@ export class ChessGameStoreExtension extends StoreExtensionProvider {
     super.setup(context);
     context.register(ChessGameBlockSchemaExtension);
     context.register(chessGameMarkdownAdapterExtension);
+    context.register(chessGamePdfAdapterExtension);
   }
 }

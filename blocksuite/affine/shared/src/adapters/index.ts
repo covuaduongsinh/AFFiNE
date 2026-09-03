@@ -61,7 +61,15 @@ export {
   NotionHtmlDeltaConverter,
 } from './notion-html';
 export * from './notion-text';
-export { PdfAdapter } from './pdf';
+export {
+  type BlockPdfAdapterContext,
+  BlockPdfAdapterExtension,
+  type BlockPdfAdapterMatcher,
+  BlockPdfAdapterMatcherIdentifier,
+  PDF_COLORS,
+  PdfAdapter,
+  type PdfContent,
+} from './pdf';
 export {
   BlockPlainTextAdapterExtension,
   type BlockPlainTextAdapterMatcher,

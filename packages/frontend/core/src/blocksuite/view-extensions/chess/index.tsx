@@ -11,15 +11,18 @@ import {
   type ChessGameBlockModel,
   ChessGameRendererExtension,
 } from '@blocksuite/chess-block-game';
+import { FrameworkProvider } from '@toeverything/infra';
 import { html, type TemplateResult } from 'lit';
 import { z } from 'zod';
 
 import { ChessBoardView } from './chess-board-view';
 import { ChessGameView } from './chess-game-view';
+import { bindChessFramework } from './framework';
 import { ChessPasteWatcher } from './paste';
 
 const optionsSchema = z.object({
   enableChess: z.boolean().optional(),
+  framework: z.instanceof(FrameworkProvider).optional(),
   reactToLit: z.optional(
     z
       .function()
@@ -45,6 +48,7 @@ export class ChessViewExtension extends ViewExtensionProvider<ChessViewOptions> 
   override setup(context: ViewExtensionContext, options?: ChessViewOptions) {
     super.setup(context, options);
 
+    bindChessFramework(options?.framework);
     const reactToLit = options?.reactToLit;
     if (options?.enableChess === false || !reactToLit) return;
 

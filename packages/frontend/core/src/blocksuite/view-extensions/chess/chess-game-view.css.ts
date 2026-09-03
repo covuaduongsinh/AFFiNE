@@ -127,6 +127,11 @@ export const currentMove = style({
   outline: `1px solid ${cssVarV2('layer/insideBorder/primaryBorder')}`,
 });
 
+export const commentedMove = style({
+  textDecoration: 'underline',
+  textDecorationStyle: 'dotted',
+});
+
 export const comment = style({
   color: cssVarV2('text/secondary'),
   fontStyle: 'italic',

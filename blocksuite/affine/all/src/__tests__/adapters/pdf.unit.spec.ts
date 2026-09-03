@@ -1,11 +1,16 @@
 import { DefaultTheme, NoteDisplayMode } from '@blocksuite/affine-model';
-import { PdfAdapter } from '@blocksuite/affine-shared/adapters';
+import {
+  BlockPdfAdapterExtension,
+  PdfAdapter,
+} from '@blocksuite/affine-shared/adapters';
+import { Container } from '@blocksuite/global/di';
 import type { BlockSnapshot, DocSnapshot } from '@blocksuite/store';
 import { AssetsManager, MemoryBlobCRUD } from '@blocksuite/store';
 import { describe, expect, test } from 'vitest';
 
 import { createJob } from '../utils/create-job.js';
 import { getProvider } from '../utils/get-provider.js';
+import { testStoreExtensions } from '../utils/store.js';
 
 const provider = getProvider();
 
@@ -1614,5 +1619,46 @@ describe('snapshot to pdf', () => {
       expect(todoItem).toBeDefined();
       expect(todoItem.table.body[0][0].svg).toContain('svg');
     });
+  });
+});
+
+describe('block pdf adapter matchers', () => {
+  const customBlock: BlockSnapshot = {
+    type: 'block',
+    id: 'block:custom',
+    flavour: 'test:custom',
+    props: { label: 'from matcher' },
+    children: [],
+  };
+
+  test('a registered matcher renders its own flavour', async () => {
+    const container = new Container();
+    testStoreExtensions.forEach(ext => ext.setup(container));
+    BlockPdfAdapterExtension({
+      flavour: 'test:custom',
+      toContent: (block, { props, baseIndent }) => [
+        { text: `${block.id}:${String(props.label)}`, margin: [baseIndent, 0] },
+      ],
+    }).setup(container);
+
+    const pdfAdapter = new PdfAdapter(createJob(), container.provider());
+    const definition = await pdfAdapter.getDocDefinition(
+      [createBaseSnapshot([customBlock])],
+      undefined
+    );
+
+    expect(JSON.stringify(definition.content)).toContain(
+      'block:custom:from matcher'
+    );
+  });
+
+  test('an unregistered flavour without text is still skipped', async () => {
+    const pdfAdapter = new PdfAdapter(createJob(), provider);
+    const definition = await pdfAdapter.getDocDefinition(
+      [createBaseSnapshot([customBlock])],
+      undefined
+    );
+
+    expect(JSON.stringify(definition.content)).not.toContain('from matcher');
   });
 });

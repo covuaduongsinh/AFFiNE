@@ -232,6 +232,10 @@ export function useAFFiNEI18N(): {
       */
     ["Export to Markdown"](): string;
     /**
+      * `Export to PDF`
+      */
+    ["Export to PDF"](): string;
+    /**
       * `Export to PNG`
       */
     ["Export to PNG"](): string;
@@ -2786,11 +2790,15 @@ export function useAFFiNEI18N(): {
       */
     ["com.affine.journal.updated-today"](): string;
     /**
-      * `No Journal`
+      * `No journal for this day`
       */
     ["com.affine.journal.placeholder.title"](): string;
     /**
-      * `Create Daily Journal`
+      * `Create one to start writing.`
+      */
+    ["com.affine.journal.placeholder.description"](): string;
+    /**
+      * `Create journal`
       */
     ["com.affine.journal.placeholder.create"](): string;
     /**
@@ -3036,6 +3044,14 @@ export function useAFFiNEI18N(): {
       */
     ["com.affine.mobile.setting.about.title"](): string;
     /**
+      * `Log In / Sign Up`
+      */
+    ["com.affine.mobile.setting.account.sign-in"](): string;
+    /**
+      * `Account & Data`
+      */
+    ["com.affine.mobile.setting.account.title"](): string;
+    /**
       * `Font style`
       */
     ["com.affine.mobile.setting.appearance.font"](): string;
@@ -3052,6 +3068,14 @@ export function useAFFiNEI18N(): {
       */
     ["com.affine.mobile.setting.appearance.title"](): string;
     /**
+      * `Experimental features`
+      */
+    ["com.affine.mobile.setting.experimental.features"](): string;
+    /**
+      * `Experimental`
+      */
+    ["com.affine.mobile.setting.experimental.title"](): string;
+    /**
       * `Settings`
       */
     ["com.affine.mobile.setting.header-title"](): string;
@@ -3060,7 +3084,7 @@ export function useAFFiNEI18N(): {
       */
     ["com.affine.mobile.setting.others.github"](): string;
     /**
-      * `Discord Group`
+      * `Discord group`
       */
     ["com.affine.mobile.setting.others.discord"](): string;
     /**
@@ -3080,9 +3104,49 @@ export function useAFFiNEI18N(): {
       */
     ["com.affine.mobile.setting.others.website"](): string;
     /**
-      * `Delete my account`
+      * `Delete Account`
       */
     ["com.affine.mobile.setting.others.delete-account"](): string;
+    /**
+      * `Danger Zone`
+      */
+    ["com.affine.mobile.setting.danger-zone.title"](): string;
+    /**
+      * `Plans`
+      */
+    ["com.affine.mobile.setting.plans.title"](): string;
+    /**
+      * `Collaborate in Cloud or Self-Hosted.`
+      */
+    ["com.affine.mobile.setting.promo.description"](): string;
+    /**
+      * `AFFiNE for teams`
+      */
+    ["com.affine.mobile.setting.promo.title"](): string;
+    /**
+      * `More cloud storage and advanced features.`
+      */
+    ["com.affine.mobile.setting.subscription.description"](): string;
+    /**
+      * `AFFiNE Pro`
+      */
+    ["com.affine.mobile.setting.subscription.title"](): string;
+    /**
+      * `Invite a friend`
+      */
+    ["com.affine.mobile.setting.support.invite"](): string;
+    /**
+      * `Check out AFFiNE for notes, whiteboards, docs, and AI.`
+      */
+    ["com.affine.mobile.setting.support.invite-message"](): string;
+    /**
+      * `Rate AFFiNE`
+      */
+    ["com.affine.mobile.setting.support.rate"](): string;
+    /**
+      * `Support us`
+      */
+    ["com.affine.mobile.setting.support.title"](): string;
     /**
       * `Want to keep data local?`
       */
@@ -5243,6 +5307,10 @@ export function useAFFiNEI18N(): {
       */
     ["com.affine.setting.account.delete.confirm-title"](): string;
     /**
+      * `Confirm your email`
+      */
+    ["com.affine.setting.account.delete.email-confirm-title"](): string;
+    /**
       * `Please type your email to confirm`
       */
     ["com.affine.setting.account.delete.input-placeholder"](): string;
@@ -6654,6 +6722,299 @@ export function useAFFiNEI18N(): {
       * `WARNING MESSAGE`
       */
     ["com.affine.settings.workspace.experimental-features.prompt-warning-title"](): string;
+    /**
+      * `Analyze`
+      */
+    ["com.affine.chess.engine.analyze"](): string;
+    /**
+      * `Scan game`
+      */
+    ["com.affine.chess.engine.scan"](): string;
+    /**
+      * `Scanning…`
+      */
+    ["com.affine.chess.engine.scanning"](): string;
+    /**
+      * `Scan failed`
+      */
+    ["com.affine.chess.engine.scanFailed"](): string;
+    /**
+      * `Stop`
+      */
+    ["com.affine.chess.engine.stop"](): string;
+    /**
+      * `Offline analysis is available in the desktop app`
+      */
+    ["com.affine.chess.engine.unavailable"](): string;
+    /**
+      * `Depth`
+      */
+    ["com.affine.chess.engine.depth"](): string;
+    /**
+      * `ACPL`
+      */
+    ["com.affine.chess.engine.acpl"](): string;
+    /**
+      * `Inaccuracy`
+      */
+    ["com.affine.chess.engine.inaccuracy"](): string;
+    /**
+      * `Mistake`
+      */
+    ["com.affine.chess.engine.mistake"](): string;
+    /**
+      * `Blunder`
+      */
+    ["com.affine.chess.engine.blunder"](): string;
+    /**
+      * `Apply to PGN`
+      */
+    ["com.affine.chess.engine.apply"](): string;
+    /**
+      * `Chess coach`
+      */
+    ["com.affine.chess.coach.title"](): string;
+    /**
+      * `Ask coach`
+      */
+    ["com.affine.chess.coach.ask"](): string;
+    /**
+      * `Send`
+      */
+    ["com.affine.chess.coach.send"](): string;
+    /**
+      * `Stop`
+      */
+    ["com.affine.chess.coach.stop"](): string;
+    /**
+      * `Ask about this position…`
+      */
+    ["com.affine.chess.coach.placeholder"](): string;
+    /**
+      * `Paste an API key only as a fallback. Prefer Claude Code or Grok monthly subscriptions.`
+      */
+    ["com.affine.chess.coach.unavailable"](): string;
+    /**
+      * `Attach Claude Code`
+      */
+    ["com.affine.chess.coach.cliHint"](): string;
+    /**
+      * `Provider`
+      */
+    ["com.affine.chess.coach.provider"](): string;
+    /**
+      * `Claude Code (subscription)`
+      */
+    ["com.affine.chess.coach.provider.claude"](): string;
+    /**
+      * `Grok (subscription)`
+      */
+    ["com.affine.chess.coach.provider.grok"](): string;
+    /**
+      * `API key (extra)`
+      */
+    ["com.affine.chess.coach.provider.api"](): string;
+    /**
+      * `Using your monthly subscription on this computer. No extra API usage.`
+      */
+    ["com.affine.chess.coach.subscriptionReady"](): string;
+    /**
+      * `Install Claude Code and run `claude` once to sign in. The coach uses that monthly subscription, not an extra API key.`
+      */
+    ["com.affine.chess.coach.subscriptionMissing.claude"](): string;
+    /**
+      * `Install Grok Build and run `grok login`. The coach uses that monthly subscription, not an extra API key.`
+      */
+    ["com.affine.chess.coach.subscriptionMissing.grok"](): string;
+    /**
+      * `API key`
+      */
+    ["com.affine.chess.coach.apiKey"](): string;
+    /**
+      * `Save key`
+      */
+    ["com.affine.chess.coach.apiSave"](): string;
+    /**
+      * `Remove key`
+      */
+    ["com.affine.chess.coach.apiClear"](): string;
+    /**
+      * `Key saved on this device`
+      */
+    ["com.affine.chess.coach.apiSaved"](): string;
+    /**
+      * `Enable chess engine`
+      */
+    ["com.affine.settings.workspace.experimental-features.enable-chess-engine.name"](): string;
+    /**
+      * `Allow offline analysis with the bundled Arasan engine on desktop.`
+      */
+    ["com.affine.settings.workspace.experimental-features.enable-chess-engine.description"](): string;
+    /**
+      * `Enable chess coach`
+      */
+    ["com.affine.settings.workspace.experimental-features.enable-chess-coach.name"](): string;
+    /**
+      * `Local chess coach that uses your Claude Code subscription and the bundled engine.`
+      */
+    ["com.affine.settings.workspace.experimental-features.enable-chess-coach.description"](): string;
+    /**
+      * `Chess library`
+      */
+    ["com.affine.chess.library.title"](): string;
+    /**
+      * `Games`
+      */
+    ["com.affine.chess.library.tab.games"](): string;
+    /**
+      * `Import`
+      */
+    ["com.affine.chess.library.tab.import"](): string;
+    /**
+      * `Assignments`
+      */
+    ["com.affine.chess.library.tab.assignments"](): string;
+    /**
+      * `Review`
+      */
+    ["com.affine.chess.library.tab.review"](): string;
+    /**
+      * `Search games`
+      */
+    ["com.affine.chess.library.search"](): string;
+    /**
+      * `Rebuild index`
+      */
+    ["com.affine.chess.library.rebuild"](): string;
+    /**
+      * `No games indexed yet`
+      */
+    ["com.affine.chess.library.empty"](): string;
+    /**
+      * `Import`
+      */
+    ["com.affine.chess.library.import"](): string;
+    /**
+      * `PGN / chess`
+      */
+    ["com.affine.chess.library.importPgn"](): string;
+    /**
+      * `{{ok}} games, {{skipped}} skipped`
+      */
+    ["com.affine.chess.library.importResult"](options: Readonly<{
+        ok: string;
+        skipped: string;
+    }>): string;
+    /**
+      * `Could not import that PGN`
+      */
+    ["com.affine.chess.library.importFailed"](): string;
+    /**
+      * `PGN file is larger than 8 MB`
+      */
+    ["com.affine.chess.library.tooLarge"](): string;
+    /**
+      * `No game found`
+      */
+    ["com.affine.chess.library.noGame"](): string;
+    /**
+      * `Game URL / ID`
+      */
+    ["com.affine.chess.library.lichessGame"](): string;
+    /**
+      * `Username`
+      */
+    ["com.affine.chess.library.lichessUser"](): string;
+    /**
+      * `Not a Lichess game or username`
+      */
+    ["com.affine.chess.library.lichessInvalid"](): string;
+    /**
+      * `Lichess game or user not found`
+      */
+    ["com.affine.chess.library.lichessNotFound"](): string;
+    /**
+      * `Lichess rate limit — try again later`
+      */
+    ["com.affine.chess.library.lichessRateLimit"](): string;
+    /**
+      * `Paste the PGN or use the desktop app`
+      */
+    ["com.affine.chess.library.lichessHttp"](): string;
+    /**
+      * `Comment on move`
+      */
+    ["com.affine.chess.library.moveComment"](): string;
+    /**
+      * `New assignment`
+      */
+    ["com.affine.chess.assignment.new"](): string;
+    /**
+      * `Assign to…`
+      */
+    ["com.affine.chess.assignment.assign"](): string;
+    /**
+      * `Submit`
+      */
+    ["com.affine.chess.assignment.submit"](): string;
+    /**
+      * `Grade`
+      */
+    ["com.affine.chess.assignment.grade"](): string;
+    /**
+      * `Needs a synced workspace`
+      */
+    ["com.affine.chess.assignment.needSync"](): string;
+    /**
+      * `Assignment action failed`
+      */
+    ["com.affine.chess.assignment.failed"](): string;
+    /**
+      * `Add to review`
+      */
+    ["com.affine.chess.review.add"](): string;
+    /**
+      * `{{count}} due`
+      */
+    ["com.affine.chess.review.due"](options: {
+        readonly count: string;
+    }): string;
+    /**
+      * `No cards due`
+      */
+    ["com.affine.chess.review.empty"](): string;
+    /**
+      * `Again`
+      */
+    ["com.affine.chess.review.again"](): string;
+    /**
+      * `Hard`
+      */
+    ["com.affine.chess.review.hard"](): string;
+    /**
+      * `Good`
+      */
+    ["com.affine.chess.review.good"](): string;
+    /**
+      * `Easy`
+      */
+    ["com.affine.chess.review.easy"](): string;
+    /**
+      * `Correct`
+      */
+    ["com.affine.chess.review.correct"](): string;
+    /**
+      * `Solution`
+      */
+    ["com.affine.chess.review.solution"](): string;
+    /**
+      * `Enable chess library`
+      */
+    ["com.affine.settings.workspace.experimental-features.enable-chess-pedagogy.name"](): string;
+    /**
+      * `Import PGN/Lichess, index games, assign homework, and review with spaced repetition.`
+      */
+    ["com.affine.settings.workspace.experimental-features.enable-chess-pedagogy.description"](): string;
     /**
       * `Enable AI`
       */
@@ -8366,6 +8727,42 @@ export function useAFFiNEI18N(): {
       */
     ["com.affine.m.explorer.collection.new-dialog-title"](): string;
     /**
+      * `No documents yet`
+      */
+    ["com.affine.m.explorer.empty.docs.title"](): string;
+    /**
+      * `Create your first document to start capturing ideas and organizing knowledge.`
+      */
+    ["com.affine.m.explorer.empty.docs.description"](): string;
+    /**
+      * `New Document`
+      */
+    ["com.affine.m.explorer.empty.docs.action"](): string;
+    /**
+      * `No collections yet`
+      */
+    ["com.affine.m.explorer.empty.collections.title"](): string;
+    /**
+      * `Create a collection to organize related content in one place.`
+      */
+    ["com.affine.m.explorer.empty.collections.description"](): string;
+    /**
+      * `New Collection`
+      */
+    ["com.affine.m.explorer.empty.collections.action"](): string;
+    /**
+      * `No tags yet`
+      */
+    ["com.affine.m.explorer.empty.tags.title"](): string;
+    /**
+      * `Add tags to your documents for easier organization and discovery.`
+      */
+    ["com.affine.m.explorer.empty.tags.description"](): string;
+    /**
+      * `New Tag`
+      */
+    ["com.affine.m.explorer.empty.tags.action"](): string;
+    /**
       * `Rename`
       */
     ["com.affine.m.explorer.doc.rename"](): string;
@@ -8862,6 +9259,22 @@ export function useAFFiNEI18N(): {
       * `Join Failed`
       */
     ["com.affine.fail-to-join-workspace.title"](): string;
+    /**
+      * `This invitation is for another account`
+      */
+    ["com.affine.invitation.account-mismatch.title"](): string;
+    /**
+      * `You're signed in with an account that wasn't invited. Sign in with the account that received this invitation to continue.`
+      */
+    ["com.affine.invitation.account-mismatch.description"](): string;
+    /**
+      * `Sign in with another account`
+      */
+    ["com.affine.invitation.account-mismatch.switch-account"](): string;
+    /**
+      * `Back to AFFiNE`
+      */
+    ["com.affine.invitation.account-mismatch.back-to-affine"](): string;
     /**
       * `Please contact your workspace owner to add more seats.`
       */
@@ -10075,6 +10488,10 @@ export function useAFFiNEI18N(): {
       */
     ["error.INVALID_INVITATION"](): string;
     /**
+      * `This invitation belongs to another account.`
+      */
+    ["error.INVITATION_ACCOUNT_MISMATCH"](): string;
+    /**
       * `No more seat available in the Space {{spaceId}}.`
       */
     ["error.NO_MORE_SEAT"](options: {
@@ -10406,6 +10823,24 @@ export function useAFFiNEI18N(): {
     ["error.INVALID_APP_CONFIG_INPUT"](options: {
         readonly message: string;
     }): string;
+    /**
+      * `Search index for Space {{spaceId}} is not ready yet.`
+      */
+    ["error.SEARCH_INDEX_NOT_READY"](options: {
+        readonly spaceId: string;
+    }): string;
+    /**
+      * `Search permissions are still syncing. Please try again shortly.`
+      */
+    ["error.SEARCH_PERMISSION_SYNCING"](): string;
+    /**
+      * `Search provider is temporarily unavailable.`
+      */
+    ["error.SEARCH_PROVIDER_UNAVAILABLE"](): string;
+    /**
+      * `Search index is temporarily unavailable.`
+      */
+    ["error.SEARCH_INDEX_FAILED"](): string;
     /**
       * `Search provider not found.`
       */
@@ -10757,6 +11192,14 @@ export const TypedTrans: {
       * `Your account will be inaccessible, and your personal space on the server will be permanently deleted. You can remove local data by uninstalling the app or clearing your browser storage. <1>This action is irreversible.</1>`
       */
     ["com.affine.setting.account.delete.confirm-delete-description-2"]: ComponentType<TypedTransProps<Readonly<{}>, {
+        ["1"]: JSX.Element;
+    }>>;
+    /**
+      * `Type <1>{{email}}</1> to confirm account deletion.`
+      */
+    ["com.affine.setting.account.delete.email-confirm-description"]: ComponentType<TypedTransProps<{
+        readonly email: string;
+    }, {
         ["1"]: JSX.Element;
     }>>;
     /**

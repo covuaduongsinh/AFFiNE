@@ -149,6 +149,13 @@ const FileTypes: NonNullable<OpenFilePickerOptions['types']> = [
       'text/xml': ['.mm', '.opml', '.xml'],
     },
   },
+  {
+    description: 'Pgn',
+    accept: {
+      'application/x-chess-pgn': ['.pgn'],
+      'text/plain': ['.txt'],
+    },
+  },
 ];
 
 /**
@@ -164,7 +171,8 @@ type AcceptTypes =
   | 'Zip'
   | 'Docx'
   | 'OneNote'
-  | 'MindMap';
+  | 'MindMap'
+  | 'Pgn';
 
 type OpenFileOptions = {
   fileSystemAccess?: boolean;

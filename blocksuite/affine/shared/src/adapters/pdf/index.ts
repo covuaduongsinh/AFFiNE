@@ -1,3 +1,4 @@
+export * from './block-adapter.js';
 export * from './css-utils.js';
 export * from './delta-converter.js';
 export * from './image-utils.js';

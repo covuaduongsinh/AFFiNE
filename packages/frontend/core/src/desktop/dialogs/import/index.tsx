@@ -2,6 +2,7 @@ import { Button, IconButton, Modal } from '@affine/component';
 import { getStoreManager } from '@affine/core/blocksuite/manager/store';
 import { useAsyncCallback } from '@affine/core/components/hooks/affine-async-hooks';
 import { useNavigateHelper } from '@affine/core/components/hooks/use-navigate-helper';
+import { ChessLibraryService } from '@affine/core/modules/chess-library';
 import {
   type DialogComponentProps,
   GlobalDialogService,
@@ -39,7 +40,7 @@ import {
   SaveIcon,
   ZipIcon,
 } from '@blocksuite/icons/rc';
-import { useService } from '@toeverything/infra';
+import { useService, useServiceOptional } from '@toeverything/infra';
 import { cssVar } from '@toeverything/theme';
 import { cssVarV2 } from '@toeverything/theme/v2';
 import {
@@ -70,7 +71,8 @@ type ImportType =
   | 'snapshot'
   | 'html'
   | 'docx'
-  | 'dotaffinefile';
+  | 'dotaffinefile'
+  | 'pgn';
 type AcceptType =
   | 'Markdown'
   | 'Zip'
@@ -78,7 +80,8 @@ type AcceptType =
   | 'Docx'
   | 'OneNote'
   | 'Directory'
-  | 'Skip'; // Skip is used for dotaffinefile
+  | 'Skip'
+  | 'Pgn';
 type Status = 'idle' | 'importing' | 'success' | 'error';
 type ImportErrorState = {
   code: string;
@@ -266,6 +269,15 @@ const importOptions = [
     testId: 'editor-option-menu-import-snapshot',
     type: 'snapshot' as ImportType,
   },
+  {
+    key: 'pgn',
+    label: 'com.affine.chess.library.importPgn',
+    prefixIcon: (
+      <FileIcon color={cssVarV2('icon/primary')} width={20} height={20} />
+    ),
+    testId: 'editor-option-menu-import-pgn',
+    type: 'pgn' as ImportType,
+  },
   BUILD_CONFIG.isElectron
     ? {
         key: 'dotaffinefile',
@@ -419,6 +431,10 @@ const importConfigs: Record<ImportType, ImportConfig> = {
         docIds,
       };
     },
+  },
+  pgn: {
+    fileOptions: { acceptType: 'Pgn', multiple: true },
+    importFunction: async () => ({ docIds: [] as string[] }),
   },
   dotaffinefile: {
     fileOptions: { acceptType: 'Skip', multiple: false },
@@ -654,6 +670,7 @@ export const ImportDialog = ({
   const workspace = useService(WorkspaceService).workspace;
   const docCollection = workspace.docCollection;
   const importService = useService(ImportService);
+  const chessLibrary = useServiceOptional(ChessLibraryService);
 
   const globalDialogService = useService(GlobalDialogService);
 
@@ -743,6 +760,25 @@ export const ImportDialog = ({
 
         const abortController = new AbortController();
         importAbortControllerRef.current = abortController;
+        const imported =
+          type === 'pgn'
+            ? {
+                docIds: chessLibrary
+                  ? (await chessLibrary.importFiles(files)).docIds
+                  : [],
+              }
+            : await importConfig.importFunction({
+                docCollection,
+                files,
+                importAffineFile: handleImportAffineFile,
+                importService,
+                context: {
+                  signal: abortController.signal,
+                  onProgress: progress => {
+                    setImportProgress(progress);
+                  },
+                },
+              });
         const {
           docIds,
           entryId,
@@ -750,18 +786,7 @@ export const ImportDialog = ({
           rootFolderId,
           importedWorkspace,
           warnings,
-        } = await importConfig.importFunction({
-          docCollection,
-          files,
-          importAffineFile: handleImportAffineFile,
-          importService,
-          context: {
-            signal: abortController.signal,
-            onProgress: progress => {
-              setImportProgress(progress);
-            },
-          },
-        });
+        } = imported;
         importAbortControllerRef.current = null;
 
         setImportResult({
@@ -796,7 +821,7 @@ export const ImportDialog = ({
         logger.error('Failed to import', error);
       }
     },
-    [docCollection, handleImportAffineFile, importService, t]
+    [chessLibrary, docCollection, handleImportAffineFile, importService, t]
   );
 
   const finishImport = useCallback(() => {

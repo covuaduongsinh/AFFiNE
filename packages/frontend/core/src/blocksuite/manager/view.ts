@@ -37,6 +37,8 @@ import { getInternalViewExtensions } from '@blocksuite/affine/extensions/view';
 import { FoundationViewExtension } from '@blocksuite/affine/foundation/view';
 import { InlineCommentViewExtension } from '@blocksuite/affine/inlines/comment';
 import { AffineCanvasTextFonts } from '@blocksuite/affine/shared/services';
+import { BlockStdScope } from '@blocksuite/affine/std';
+import type { Store } from '@blocksuite/affine/store';
 import { LinkedDocViewExtension } from '@blocksuite/affine/widgets/linked-doc/view';
 import { ChessBoardViewExtension } from '@blocksuite/chess-block-board/view';
 import { ChessGameViewExtension } from '@blocksuite/chess-block-game/view';
@@ -57,7 +59,11 @@ type Configure = {
   cloud: (framework?: FrameworkProvider, enableCloud?: boolean) => Configure;
   turboRenderer: (enableTurboRenderer?: boolean) => Configure;
   pdf: (enablePDFEmbedPreview?: boolean, reactToLit?: ReactToLit) => Configure;
-  chess: (enableChess?: boolean, reactToLit?: ReactToLit) => Configure;
+  chess: (
+    enableChess?: boolean,
+    reactToLit?: ReactToLit,
+    framework?: FrameworkProvider
+  ) => Configure;
   mobile: (framework?: FrameworkProvider) => Configure;
   ai: (enable?: boolean, framework?: FrameworkProvider) => Configure;
   electron: (framework?: FrameworkProvider) => Configure;
@@ -320,9 +326,14 @@ class ViewProvider {
 
   private readonly _configureChess = (
     enableChess?: boolean,
-    reactToLit?: ReactToLit
+    reactToLit?: ReactToLit,
+    framework?: FrameworkProvider
   ) => {
-    this._manager.configure(ChessViewExtension, { enableChess, reactToLit });
+    this._manager.configure(ChessViewExtension, {
+      enableChess,
+      reactToLit,
+      framework,
+    });
     return this.config;
   };
 
@@ -380,4 +391,11 @@ class ViewProvider {
 
 export function getViewManager() {
   return ViewProvider.getInstance();
+}
+
+export function createBlockStdScope(store: Store) {
+  return new BlockStdScope({
+    store,
+    extensions: getViewManager().config.init().value.get('page'),
+  });
 }

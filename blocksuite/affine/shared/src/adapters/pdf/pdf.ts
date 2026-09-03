@@ -29,6 +29,10 @@ import type {
 
 import { getNumberPrefix } from '../../utils';
 import { sanitizeSvg } from '../../utils/svg.js';
+import {
+  type BlockPdfAdapterMatcher,
+  BlockPdfAdapterMatcherIdentifier,
+} from './block-adapter.js';
 import { resolveCssVariable } from './css-utils.js';
 import { extractTextWithInline } from './delta-converter.js';
 import {
@@ -84,8 +88,16 @@ export type PdfAdapterFile = {
  * ```
  */
 export class PdfAdapter extends BaseAdapter<PdfAdapterFile> {
+  /** Flavour → matcher, for blocks that live outside this package. */
+  private readonly _blockMatchers: Record<string, BlockPdfAdapterMatcher> = {};
+
   constructor(job: Transformer, provider: ServiceProvider) {
     super(job, provider);
+    for (const matcher of provider
+      .getAll(BlockPdfAdapterMatcherIdentifier)
+      .values()) {
+      this._blockMatchers[matcher.flavour] = matcher;
+    }
   }
 
   async fromBlockSnapshot({
@@ -284,6 +296,14 @@ export class PdfAdapter extends BaseAdapter<PdfAdapterFile> {
       flavour === 'affine:embed-synced-doc'
     ) {
       content.push(this._createLinkedDocContent(props, baseIndent));
+    } else if (this._blockMatchers[flavour]) {
+      content.push(
+        ...(await this._blockMatchers[flavour].toContent(block, {
+          props,
+          baseIndent,
+          assets: assets ?? this.job.assetsManager,
+        }))
+      );
     } else if (hasTextContent(textContent)) {
       content.push({
         text: textContent,

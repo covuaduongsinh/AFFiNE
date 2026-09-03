@@ -12,8 +12,11 @@ import {
 import { configureAppSidebarModule } from './app-sidebar';
 import { configAtMenuConfigModule } from './at-menu-config';
 import { configureBlobManagementModule } from './blob-management';
+import { configureChessAssignmentModule } from './chess-assignment';
 import { configureChessCoachModule } from './chess-coach';
 import { configureChessEngineModule } from './chess-engine';
+import { configureChessLibraryModule } from './chess-library';
+import { configureChessReviewModule } from './chess-review';
 import { configureCloudModule } from './cloud';
 import { configureCodeBlockPreviewRendererModule } from './code-block-preview-renderer';
 import { configureCollectionModule } from './collection';
@@ -83,6 +86,9 @@ export function configureCommonModules(framework: Framework) {
   configureFeatureFlagModule(framework);
   configureChessEngineModule(framework);
   configureChessCoachModule(framework);
+  configureChessLibraryModule(framework);
+  configureChessAssignmentModule(framework);
+  configureChessReviewModule(framework);
   configureCodeBlockPreviewRendererModule(framework);
   configureCollectionModule(framework);
   configureNavigationModule(framework);
