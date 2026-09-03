@@ -170,3 +170,33 @@ khối cờ vì thế được chèn từ nút **+** của thanh công cụ bàn
 
 **Bảng trắng (edgeless) mặc định chỉ đọc trên điện thoại.** Bật ở Settings → Experimental features
 → mobile edgeless editing nếu cần vẽ trên bảng.
+
+## 10. Mang bản sao lưu ra khỏi VPS
+
+Job hằng đêm đã chép nguội dữ liệu vào `/var/backups/chess-sync` trên chính VPS. Nhưng một bản
+sao nằm cùng máy với bản gốc thì **không phải bản sao lưu** — máy hỏng là mất cả hai.
+
+`deploy/pull-backup.ps1` làm nốt bước còn thiếu. Chạy trên máy Windows:
+
+```powershell
+.\pull-backup.ps1
+```
+
+Nó tìm bản mới nhất trên VPS, tải về `Documents\affine-backup`, **đối chiếu vân tay SHA-256 hai
+đầu**, giữ 12 bản gần nhất và xoá bản cũ hơn. Nếu bản mới nhất trên VPS đã quá 2 ngày tuổi, nó
+cảnh báo — đó là dấu hiệu job hằng đêm đã hỏng.
+
+Đối chiếu vân tay không phải cho đẹp: một file tải hỏng giữa chừng trông y hệt file tốt cho tới
+ngày cần khôi phục, và đó là ngày tệ nhất để phát hiện.
+
+Muốn khỏi phải nhớ thì đặt lịch cho Windows chạy hằng tuần:
+
+```powershell
+$action  = New-ScheduledTaskAction -Execute 'powershell.exe' `
+  -Argument '-NoProfile -ExecutionPolicy Bypass -File "C:\đường\dẫn\pull-backup.ps1"'
+$trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At 8pm
+Register-ScheduledTask -TaskName 'AFFiNE backup pull' -Action $action -Trigger $trigger
+```
+
+**Khôi phục** thì làm ngược lại: đẩy file lên VPS, dừng service, bung vào thư mục dữ liệu — quy
+trình đầy đủ ở [../docs/an-toan-du-lieu.md](../docs/an-toan-du-lieu.md).
