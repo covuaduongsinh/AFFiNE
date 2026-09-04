@@ -14,8 +14,18 @@ WORKDIR /app
 # installed by the monorepo's yarn — so this is `npm install`, not `npm ci`.
 COPY package.json ./
 
+# The npm that ships in the base image crashes resolving this graph with
+# "Cannot read properties of null (reading 'edgesOut')" — its own bug, not a
+# problem with the dependencies, and it appeared when the base image updated.
+# Pin a newer npm rather than working around it.
+RUN npm install -g npm@12
+
 # --omit=dev drops vitest and socket.io-client. Only the *.spec.ts files need
 # them, and .dockerignore keeps those out of the build context.
+#
+# npm 12 blocks install scripts by default; package.json lists esbuild under
+# `allowScripts` because tsx runs on esbuild, and tsx is how this server
+# executes at all.
 RUN npm install --omit=dev --no-audit --no-fund \
  && npm cache clean --force
 

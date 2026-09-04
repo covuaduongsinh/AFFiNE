@@ -29,5 +29,9 @@
   "devDependencies": {
     "socket.io-client": "^4.8.3",
     "vitest": "^4.1.8"
+  },
+  "comment:allowScripts": "npm 12 blocks install scripts by default. esbuild's is not optional here — tsx runs on esbuild, and tsx is how this package executes at all. Listing it is narrower than disabling the policy. Only read by npm; yarn installs this package in the monorepo and ignores it.",
+  "allowScripts": {
+    "esbuild": true
   }
 }
