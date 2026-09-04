@@ -1,6 +1,6 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -24,7 +24,9 @@ describe('blob keys stay inside the blob tree', () => {
 
   it('still accepts the keys the app actually uses', () => {
     for (const key of ['avatar-abc123', 'comment-1.png', 'nested/name.jpg']) {
-      expect(blobPath('/data', 'ws1', key)).toContain('/data/blobs/ws1/');
+      expect(blobPath('/data', 'ws1', key)).toBe(
+        resolve('/data', 'blobs', 'ws1', key)
+      );
     }
   });
 });
