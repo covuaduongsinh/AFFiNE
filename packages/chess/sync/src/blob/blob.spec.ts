@@ -64,10 +64,12 @@ describe('blobs', () => {
     expect(upload.data?.createBlobUpload.alreadyUploaded).toBe(false);
 
     const operations = JSON.stringify({
-      query: `mutation($workspaceId: String!, $blob: Upload!) {
+      name: 'setBlobMutation',
+      query: `mutation setBlobMutation($workspaceId: String!, $blob: Upload!) {
         setBlob(workspaceId: $workspaceId, blob: $blob)
       }`,
       variables: { workspaceId, blob: null },
+      map: {},
     });
     const form = new FormData();
     form.set('operations', operations);

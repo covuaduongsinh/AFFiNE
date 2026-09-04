@@ -71,6 +71,7 @@ export async function startChessSync(
     landingPage: false,
     graphiql: false,
     maskedErrors: false,
+    extraParamNames: ['map', 'name'],
     context: async ({ req }): Promise<GqlContext> => {
       // Configured wins. This origin is written into the database — an avatar
       // upload stores an absolute URL — so deriving it from a header the
@@ -136,6 +137,18 @@ export async function startChessSync(
       });
 
       const response = await yoga.fetch(request, { req, reply });
+      if (response.status >= 400) {
+        try {
+          const cloned = response.clone();
+          console.error(
+            '[GraphQL ERROR RESPONSE]',
+            response.status,
+            await cloned.text()
+          );
+        } catch {
+          // ignore
+        }
+      }
       response.headers.forEach((value, key) => {
         reply.header(key, value);
       });
