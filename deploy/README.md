@@ -200,3 +200,42 @@ Register-ScheduledTask -TaskName 'AFFiNE backup pull' -Action $action -Trigger $
 
 **Khôi phục** thì làm ngược lại: đẩy file lên VPS, dừng service, bung vào thư mục dữ liệu — quy
 trình đầy đủ ở [../docs/an-toan-du-lieu.md](../docs/an-toan-du-lieu.md).
+
+## 11. Cập nhật cái gì thì cần làm gì
+
+Hai nửa của stack cập nhật theo hai cơ chế khác nhau, và nhầm chỗ này dẫn tới một site trông như
+đã cập nhật nhưng thực ra không.
+
+| Sửa gì | Cách đưa lên |
+| ------ | ------------ |
+| **Backend** `packages/chess/sync` | Dokploy đóng gói thành Docker image. Sửa file trong `/etc/dokploy/affine/sync` **không có tác dụng gì** — thứ đang chạy là image, không phải thư mục. Phải `compose.deploy` |
+| **Bản web tĩnh** `web/`, `web-mobile/` | Caddy đọc thẳng từ đĩa qua bind mount. Ghi đè file là **có hiệu lực ngay**, không cần deploy |
+
+### Đừng thay bản web bằng cách đổi tên thư mục
+
+Cách này trông an toàn vì nó nguyên tử:
+
+```bash
+mv web web.old && mv web.new web        # SAI
+```
+
+Nhưng **bind mount của Docker bám vào inode của thư mục lúc container khởi động, không bám vào
+đường dẫn**. Đổi tên xong, container vẫn đọc thư mục cũ — giờ mang tên `web.old` — và phục vụ nội
+dung cũ mãi mãi, kể cả khi file trên đĩa đã đổi. Triệu chứng: trang HTML trỏ tới một file `.js`
+không còn tồn tại trong `web/`.
+
+Ghi đè **nội dung**, giữ nguyên chính thư mục:
+
+```bash
+rm -rf web/* web/.[!.]* ; cp -a web.new/. web/    # ĐÚNG
+```
+
+Kiểm sau mỗi lần cập nhật, đừng tin là xong vì lệnh không báo lỗi:
+
+```bash
+# Tên file js trong HTML site trả về phải khớp file có thật trên đĩa
+JS=$(curl -s -u chess:MK https://tenmien.vn/ | grep -oE '/js/index\.[a-f0-9]+\.js' | head -1)
+test -f "/etc/dokploy/affine/web$JS" && echo "khớp" || echo "LỆCH — mount đang trỏ vào thư mục cũ"
+```
+
+Nếu lệch thì deploy lại stack: tạo lại container là mount trỏ đúng thư mục hiện tại.
