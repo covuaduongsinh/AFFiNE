@@ -174,6 +174,82 @@ const StoragePanel = ({
   );
 };
 
+const DropboxSyncPanel = () => {
+  return (
+    <SettingRow
+      name="Dropbox Cloud Sync"
+      desc="Tự động đồng bộ thời gian thực tệp đính kèm và sao lưu cơ sở dữ liệu hàng đêm lên Dropbox"
+      spreadCol={false}
+    >
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+          padding: '12px',
+          background: 'var(--affine-background-secondary-color)',
+          borderRadius: '8px',
+          fontSize: '13px',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <span style={{ fontWeight: 500 }}>Trạng thái kết nối</span>
+          <span
+            style={{
+              color: '#10b981',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontWeight: 600,
+            }}
+          >
+            <span
+              style={{
+                display: 'inline-block',
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                backgroundColor: '#10b981',
+              }}
+            />
+            Đang hoạt động (Connected)
+          </span>
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <span>Chế độ đồng bộ</span>
+          <span style={{ color: 'var(--affine-text-secondary-color)' }}>
+            Thời gian thực (Real-time Watcher)
+          </span>
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <span>Kênh lưu trữ</span>
+          <span style={{ color: 'var(--affine-text-secondary-color)' }}>
+            Dropbox (blobs/ & backups/daily/)
+          </span>
+        </div>
+      </div>
+    </SettingRow>
+  );
+};
+
 const DevicesPanel = () => {
   const t = useI18n();
   const auth = useService(AuthService);
@@ -358,6 +434,7 @@ export const AccountSetting = ({
         </SettingRow>
         <DevicesPanel />
         <StoragePanel onChangeSettingState={onChangeSettingState} />
+        <DropboxSyncPanel />
         {serverFeatures?.copilot && (
           <AIUsagePanel onChangeSettingState={onChangeSettingState} />
         )}

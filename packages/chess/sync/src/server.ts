@@ -90,12 +90,9 @@ export async function startChessSync(
     },
   });
 
-  app.addContentTypeParser(
-    'multipart/form-data',
-    (_request, _payload, done) => {
-      done(null);
-    }
-  );
+  app.addContentTypeParser('multipart/form-data', (_request, payload, done) => {
+    done(null, payload);
+  });
 
   app.route({
     url: '/graphql',
@@ -125,24 +122,20 @@ export async function startChessSync(
       const isMultipart = String(req.headers['content-type'] ?? '').includes(
         'multipart/form-data'
       );
-      const request = isMultipart
-        ? undefined
-        : new Request(url, {
-            method: req.method,
-            headers,
-            body:
-              req.method === 'GET' || req.method === 'HEAD'
-                ? undefined
-                : JSON.stringify(req.body ?? {}),
-          });
 
-      const response = request
-        ? await yoga.fetch(request, { req, reply })
-        : await yoga.handleNodeRequestAndResponse(req.raw, reply.raw, {
-            req,
-            reply,
-          });
+      const request = new Request(url, {
+        method: req.method,
+        headers,
+        body: isMultipart
+          ? (req.raw as any)
+          : req.method === 'GET' || req.method === 'HEAD'
+            ? undefined
+            : JSON.stringify(req.body ?? {}),
+        // @ts-expect-error Node fetch duplex option
+        duplex: 'half',
+      });
 
+      const response = await yoga.fetch(request, { req, reply });
       response.headers.forEach((value, key) => {
         reply.header(key, value);
       });
