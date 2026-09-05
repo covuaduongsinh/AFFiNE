@@ -7,7 +7,6 @@ import {
 import {
   type BoardSvgArrow,
   type BoardSvgHighlight,
-  fenToChessFontText,
   fenToSvg,
 } from '@blocksuite/chess-core';
 
@@ -62,11 +61,8 @@ export const chessBoardPdfAdapterMatcher: BlockPdfAdapterMatcher = {
     const orientation = props.orientation === 'black' ? 'black' : 'white';
     const arrows = readArrows(props.arrows);
     const highlights = readHighlights(props.highlights);
-    const hasAnnotations = arrows.length > 0 || highlights.length > 0;
-
-    let boardContent: PdfContent;
-    if (hasAnnotations) {
-      boardContent = {
+    const content: PdfContent[] = [
+      {
         svg: fenToSvg(fen, {
           orientation,
           size: BOARD_SIZE,
@@ -78,19 +74,8 @@ export const chessBoardPdfAdapterMatcher: BlockPdfAdapterMatcher = {
         height: BOARD_SIZE,
         margin: [0, 8, 0, 4],
         alignment: 'center',
-      };
-    } else {
-      boardContent = {
-        text: fenToChessFontText(fen, { orientation, border: true }),
-        font: 'OpenChessFont',
-        fontSize: 22,
-        lineHeight: 1.0,
-        margin: [0, 8, 0, 4],
-        alignment: 'center',
-      };
-    }
-
-    const content: PdfContent[] = [boardContent];
+      },
+    ];
 
     const caption = typeof props.caption === 'string' ? props.caption : '';
     if (caption !== '') {

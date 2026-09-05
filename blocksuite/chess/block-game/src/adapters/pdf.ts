@@ -6,7 +6,7 @@ import {
 } from '@blocksuite/affine-shared/adapters';
 import {
   captionFromHeaders,
-  fenToChessFontText,
+  fenToSvg,
   type Game,
   parsePgn,
   positionAt,
@@ -57,13 +57,13 @@ export const chessGamePdfAdapterMatcher: BlockPdfAdapterMatcher = {
     const fen = toFen(positionAt(game, currentPath));
     const content: PdfContent[] = [
       {
-        text: fenToChessFontText(fen, {
+        svg: fenToSvg(fen, {
           orientation,
-          border: true,
+          size: BOARD_SIZE,
+          textInSvg: false,
         }),
-        font: 'OpenChessFont',
-        fontSize: 22,
-        lineHeight: 1.0,
+        width: BOARD_SIZE,
+        height: BOARD_SIZE,
         margin: [0, 8, 0, 4],
         alignment: 'center',
       },
