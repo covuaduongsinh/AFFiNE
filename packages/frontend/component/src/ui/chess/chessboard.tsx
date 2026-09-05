@@ -9,11 +9,7 @@ import {
 } from 'react';
 
 import * as styles from './chessboard.css';
-import {
-  ChessPiece,
-  type ChessPieceSet,
-  type PieceLetter,
-} from './pieces';
+import { ChessPiece, type ChessPieceSet, type PieceLetter } from './pieces';
 
 export type BoardOrientation = 'white' | 'black';
 

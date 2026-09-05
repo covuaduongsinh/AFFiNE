@@ -43,7 +43,8 @@ export const PIECE_SETS_METADATA: Record<ChessPieceSet, PieceSetMetadata> = {
     name: 'Staunton Classic',
     author: 'James Clarke / AFFiNE Chess Suite',
     license: 'MIT',
-    description: 'Standard FIDE tournament diagram design, ideal for training manuals & books',
+    description:
+      'Standard FIDE tournament diagram design, ideal for training manuals & books',
   },
   kosal: {
     id: 'kosal',
@@ -57,14 +58,16 @@ export const PIECE_SETS_METADATA: Record<ChessPieceSet, PieceSetMetadata> = {
     name: 'Celtic Art',
     author: 'Maurizio Monge (maurimo/chess-art)',
     license: 'MIT',
-    description: 'Smooth artistic curves with distinct black & white silhouettes',
+    description:
+      'Smooth artistic curves with distinct black & white silhouettes',
   },
   rhosgfx: {
     id: 'rhosgfx',
     name: 'RhosGFX Clean',
     author: 'RhosGFX',
     license: 'CC0 1.0 Universal',
-    description: 'Bold high-contrast outlines for small screens and quick recognition',
+    description:
+      'Bold high-contrast outlines for small screens and quick recognition',
   },
   firi: {
     id: 'firi',
