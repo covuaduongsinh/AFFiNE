@@ -1,5 +1,6 @@
 import { and, desc, eq } from 'drizzle-orm';
 import { GraphQLScalarType, Kind } from 'graphql';
+import * as Y from 'yjs';
 
 import { removeBlobFile, writeBlobFile } from '../blob/store.js';
 import { newId } from '../crypto.js';
@@ -14,6 +15,7 @@ import {
   workspaces,
 } from '../db/schema.js';
 import { gqlError } from '../errors.js';
+import { loadYDoc, releaseDoc } from '../sync/docs.js';
 import type { GqlContext } from '../types.js';
 import {
   docPermissions,
@@ -301,34 +303,93 @@ export function createResolvers() {
           ? await getMember(ctx.state, parent.id, ctx.user.id)
           : undefined;
         const allowed = member?.status === 'Accepted';
+        const ownerId = await getOwnerId(ctx.state, parent.id);
         return {
           id: args.docId,
           mode: 'Page',
           public: false,
           permissions: docPermissions(Boolean(allowed)),
           summary: '',
-          creatorId: null,
-          lastUpdaterId: null,
+          creatorId: ownerId,
+          lastUpdaterId: ownerId,
         };
       },
       publicDocs: () => [],
       histories: () => [],
-      docs: () => ({
-        totalCount: 0,
-        pageInfo: {
-          startCursor: null,
-          endCursor: null,
-          hasNextPage: false,
-          hasPreviousPage: false,
-        },
-        edges: [],
-      }),
-      pageMeta: () => ({
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        createdBy: null,
-        updatedBy: null,
-      }),
+      docs: async (
+        parent: { id: string },
+        args: { pagination?: { first?: number; after?: string } },
+        ctx: GqlContext
+      ) => {
+        const ownerId = await getOwnerId(ctx.state, parent.id);
+        const rootDoc = await loadYDoc(ctx.state, parent.id, parent.id);
+        const metaMap = rootDoc.getMap('meta');
+        const pages = metaMap.get('pages') as Y.Array<unknown> | undefined;
+        const docList: Array<{
+          id: string;
+          creatorId: string;
+          lastUpdaterId: string;
+          permissions: ReturnType<typeof docPermissions>;
+          mode: string;
+          public: boolean;
+          summary: string;
+        }> = [];
+        if (pages && pages instanceof Y.Array) {
+          for (let i = 0; i < pages.length; i++) {
+            const p = pages.get(i);
+            if (p instanceof Y.Map) {
+              const id = p.get('id') as string;
+              if (id) {
+                docList.push({
+                  id,
+                  creatorId: (p.get('createdBy') as string) || ownerId,
+                  lastUpdaterId: (p.get('updatedBy') as string) || ownerId,
+                  permissions: docPermissions(true),
+                  mode: 'Page',
+                  public: false,
+                  summary: '',
+                });
+              }
+            }
+          }
+        }
+        releaseDoc(parent.id, parent.id);
+
+        const first = args.pagination?.first ?? 100;
+        let slice = docList;
+        if (args.pagination?.after) {
+          const idx = docList.findIndex(d => d.id === args.pagination?.after);
+          slice = idx >= 0 ? docList.slice(idx + 1) : docList;
+        }
+        const page = slice.slice(0, first);
+        return {
+          totalCount: docList.length,
+          pageInfo: {
+            startCursor: page[0]?.id ?? null,
+            endCursor: page[page.length - 1]?.id ?? null,
+            hasNextPage: slice.length > first,
+            hasPreviousPage: Boolean(args.pagination?.after),
+          },
+          edges: page.map(node => ({ cursor: node.id, node })),
+        };
+      },
+      pageMeta: async (
+        parent: { id: string },
+        args: { pageId: string },
+        ctx: GqlContext
+      ) => {
+        const ownerId = await getOwnerId(ctx.state, parent.id);
+        const user = await publicUser(ctx.state, ownerId);
+        const editor = user
+          ? { name: user.name, avatarUrl: user.avatarUrl }
+          : null;
+        return {
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          createdBy: editor,
+          updatedBy: editor,
+        };
+      },
       blobUploadPartUrl: () => null,
     },
     Mutation: {

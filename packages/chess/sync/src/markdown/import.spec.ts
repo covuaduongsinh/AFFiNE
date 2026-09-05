@@ -152,4 +152,38 @@ describe('Markdown Importer', () => {
     expect(gameBlock).not.toBeNull();
     expect(gameBlock.get('prop:pgn')).toContain('1. e4 e5 2. Nf3 Nc6');
   });
+
+  it('chunks contiguous text lines into a single paragraph block', () => {
+    const markdown = [
+      '# Document with Multi-line Paragraphs',
+      '',
+      'Line 1 of first paragraph.',
+      'Line 2 of first paragraph.',
+      'Line 3 of first paragraph.',
+      '',
+      'Line 1 of second paragraph.',
+      'Line 2 of second paragraph.',
+    ].join('\n');
+
+    const { doc } = markdownToYDoc(markdown);
+    const blocks = doc.getMap('blocks');
+
+    const paragraphBlocks: any[] = [];
+    blocks.forEach((block: any) => {
+      if (
+        block.get('sys:flavour') === 'affine:paragraph' &&
+        block.get('prop:type') === 'text'
+      ) {
+        paragraphBlocks.push(block);
+      }
+    });
+
+    expect(paragraphBlocks).toHaveLength(2);
+    expect(paragraphBlocks[0].get('prop:text').toString()).toBe(
+      'Line 1 of first paragraph.\nLine 2 of first paragraph.\nLine 3 of first paragraph.'
+    );
+    expect(paragraphBlocks[1].get('prop:text').toString()).toBe(
+      'Line 1 of second paragraph.\nLine 2 of second paragraph.'
+    );
+  });
 });

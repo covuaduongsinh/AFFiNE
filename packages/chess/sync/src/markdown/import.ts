@@ -8,6 +8,7 @@ import * as Y from 'yjs';
 
 import { deleteDoc, loadYDoc, pushUpdate, releaseDoc } from '../sync/docs.js';
 import type { AppState } from '../types.js';
+import { getOwnerId } from '../workspace.js';
 
 interface DocMapEntry {
   fileName: string;
@@ -236,6 +237,28 @@ export function markdownToYDoc(
   let codeLang = '';
   let codeLines: string[] = [];
 
+  let pendingParagraphLines: string[] = [];
+
+  const flushParagraph = () => {
+    if (pendingParagraphLines.length === 0) return;
+    const textContent = pendingParagraphLines.join('\n');
+    pendingParagraphLines = [];
+
+    const blockId = nanoid();
+    const pMap = new Y.Map();
+    blocks.set(blockId, pMap);
+    pMap.set('sys:id', blockId);
+    pMap.set('sys:flavour', 'affine:paragraph');
+    pMap.set('sys:version', 1);
+    pMap.set('sys:children', new Y.Array());
+    pMap.set('prop:type', 'text');
+    const yText = new Y.Text();
+    pMap.set('prop:text', yText);
+    parseInlineFormatting(textContent, yText);
+    pMap.set('prop:collapsed', false);
+    childBlockIds.push(blockId);
+  };
+
   for (const rawLine of contentLines) {
     const line = rawLine.trim();
 
@@ -325,6 +348,7 @@ export function markdownToYDoc(
     }
 
     if (line.startsWith('```')) {
+      flushParagraph();
       inCodeBlock = true;
       codeLang = line.slice(3).trim();
       codeLines = [];
@@ -332,6 +356,7 @@ export function markdownToYDoc(
     }
 
     if (line === '---' || line === '***' || line === '___') {
+      flushParagraph();
       const blockId = nanoid();
       const divMap = new Y.Map();
       divMap.set('sys:id', blockId);
@@ -346,6 +371,7 @@ export function markdownToYDoc(
     // Image ![alt](url)
     const imgMatch = /^!\[([^\]]*)\]\(([^)]+)\)$/.exec(line);
     if (imgMatch) {
+      flushParagraph();
       const blockId = nanoid();
       const imgMap = new Y.Map();
       blocks.set(blockId, imgMap);
@@ -364,6 +390,7 @@ export function markdownToYDoc(
     // Headings
     const headingMatch = /^(#{1,6})\s+(.+)$/.exec(line);
     if (headingMatch) {
+      flushParagraph();
       const level = headingMatch[1].length;
       const headingText = headingMatch[2];
       const blockId = nanoid();
@@ -384,6 +411,7 @@ export function markdownToYDoc(
 
     // Blockquote
     if (line.startsWith('> ')) {
+      flushParagraph();
       const blockId = nanoid();
       const pMap = new Y.Map();
       blocks.set(blockId, pMap);
@@ -403,6 +431,7 @@ export function markdownToYDoc(
     // Todo list item: - [ ] or - [x]
     const todoMatch = /^-\s+\[([ xX])\]\s+(.+)$/.exec(line);
     if (todoMatch) {
+      flushParagraph();
       const checked = todoMatch[1].toLowerCase() === 'x';
       const itemText = todoMatch[2];
       const blockId = nanoid();
@@ -424,6 +453,7 @@ export function markdownToYDoc(
     // Numbered list item: 1. item
     const numberedMatch = /^\d+\.\s+(.+)$/.exec(line);
     if (numberedMatch) {
+      flushParagraph();
       const itemText = numberedMatch[1];
       const blockId = nanoid();
       const listMap = new Y.Map();
@@ -443,6 +473,7 @@ export function markdownToYDoc(
     // Bullet list item: - item or * item
     const bulletMatch = /^[-*]\s+(.+)$/.exec(line);
     if (bulletMatch) {
+      flushParagraph();
       const itemText = bulletMatch[1];
       const blockId = nanoid();
       const listMap = new Y.Map();
@@ -459,25 +490,18 @@ export function markdownToYDoc(
       continue;
     }
 
-    // Paragraph
+    // Empty line separates paragraphs
     if (!line) {
+      flushParagraph();
       continue;
     }
 
-    const blockId = nanoid();
-    const pMap = new Y.Map();
-    blocks.set(blockId, pMap);
-    pMap.set('sys:id', blockId);
-    pMap.set('sys:flavour', 'affine:paragraph');
-    pMap.set('sys:version', 1);
-    pMap.set('sys:children', new Y.Array());
-    pMap.set('prop:type', 'text');
-    const yText = new Y.Text();
-    pMap.set('prop:text', yText);
-    parseInlineFormatting(rawLine, yText);
-    pMap.set('prop:collapsed', false);
-    childBlockIds.push(blockId);
+    // Regular paragraph line
+    pendingParagraphLines.push(rawLine);
   }
+
+  // Flush any pending paragraph lines
+  flushParagraph();
 
   // Ensure at least 1 paragraph block
   if (childBlockIds.length === 0) {
@@ -600,6 +624,7 @@ export async function importMarkdownFile(
 
   const fallbackTitle = fileName.replace(/\.md$/i, '');
   const now = Date.now();
+  const ownerId = await getOwnerId(state, workspaceId);
 
   if (targetDocId) {
     // Update existing document
@@ -608,7 +633,7 @@ export async function importMarkdownFile(
     const update = Y.encodeStateAsUpdate(doc);
     releaseDoc(workspaceId, targetDocId);
 
-    await pushUpdate(state, workspaceId, targetDocId, update, 'system:import');
+    await pushUpdate(state, workspaceId, targetDocId, update, ownerId);
 
     // Update title in workspace root doc if changed
     const rootDoc = await loadYDoc(state, workspaceId, workspaceId);
@@ -629,8 +654,9 @@ export async function importMarkdownFile(
           targetPageFound = true;
           if (p.get('title') !== title) {
             p.set('title', title);
-            p.set('updatedDate', now);
           }
+          p.set('updatedDate', now);
+          p.set('updatedBy', ownerId);
         }
       } else if (p && typeof p === 'object') {
         const raw = p as Record<string, unknown>;
@@ -640,9 +666,11 @@ export async function importMarkdownFile(
           ['id', pId],
           ['title', pId === targetDocId ? title : String(raw.title || '')],
           ['createDate', Number(raw.createDate || now)],
+          ['updatedDate', now],
+          ['createdBy', String(raw.createdBy || ownerId)],
+          ['updatedBy', ownerId],
           ['tags', new Y.Array()],
         ]);
-        if (raw.updatedDate) ymap.set('updatedDate', Number(raw.updatedDate));
         entriesToReplace.push({ index: idx, entry: ymap });
       }
     });
@@ -658,6 +686,9 @@ export async function importMarkdownFile(
         ['id', targetDocId],
         ['title', title],
         ['createDate', now],
+        ['updatedDate', now],
+        ['createdBy', ownerId],
+        ['updatedBy', ownerId],
         ['tags', new Y.Array()],
       ]);
       pages.push([pageMapEntry]);
@@ -669,13 +700,7 @@ export async function importMarkdownFile(
     }
 
     const rootUpdate = Y.encodeStateAsUpdate(rootDoc);
-    await pushUpdate(
-      state,
-      workspaceId,
-      workspaceId,
-      rootUpdate,
-      'system:import'
-    );
+    await pushUpdate(state, workspaceId, workspaceId, rootUpdate, ownerId);
     releaseDoc(workspaceId, workspaceId);
 
     docMap[targetDocId] = { fileName, hash, updatedAt: now };
@@ -687,7 +712,7 @@ export async function importMarkdownFile(
     const { title, doc } = markdownToYDoc(content, new Y.Doc(), fallbackTitle);
     const update = Y.encodeStateAsUpdate(doc);
 
-    await pushUpdate(state, workspaceId, newDocId, update, 'system:import');
+    await pushUpdate(state, workspaceId, newDocId, update, ownerId);
 
     // Register in workspace root doc
     const rootDoc = await loadYDoc(state, workspaceId, workspaceId);
@@ -707,9 +732,11 @@ export async function importMarkdownFile(
           ['id', String(raw.id || '')],
           ['title', String(raw.title || '')],
           ['createDate', Number(raw.createDate || now)],
+          ['updatedDate', Number(raw.updatedDate || now)],
+          ['createdBy', String(raw.createdBy || ownerId)],
+          ['updatedBy', String(raw.updatedBy || ownerId)],
           ['tags', new Y.Array()],
         ]);
-        if (raw.updatedDate) ymap.set('updatedDate', Number(raw.updatedDate));
         entriesToReplace.push({ index: idx, entry: ymap });
       }
     });
@@ -724,6 +751,9 @@ export async function importMarkdownFile(
       ['id', newDocId],
       ['title', title],
       ['createDate', now],
+      ['updatedDate', now],
+      ['createdBy', ownerId],
+      ['updatedBy', ownerId],
       ['tags', new Y.Array()],
     ]);
     pages.push([pageMapEntry]);
@@ -734,13 +764,7 @@ export async function importMarkdownFile(
     }
 
     const rootUpdate = Y.encodeStateAsUpdate(rootDoc);
-    await pushUpdate(
-      state,
-      workspaceId,
-      workspaceId,
-      rootUpdate,
-      'system:import'
-    );
+    await pushUpdate(state, workspaceId, workspaceId, rootUpdate, ownerId);
     releaseDoc(workspaceId, workspaceId);
 
     docMap[newDocId] = { fileName, hash, updatedAt: now };
