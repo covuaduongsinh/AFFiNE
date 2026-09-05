@@ -34,6 +34,14 @@ const textOf = (entry: unknown): string | undefined => {
   return undefined;
 };
 
+const fontOf = (entry: unknown): string | undefined => {
+  if (entry && typeof entry === 'object' && 'font' in entry) {
+    const font = entry.font;
+    if (typeof font === 'string') return font;
+  }
+  return undefined;
+};
+
 describe('chess game pdf adapter', () => {
   it('claims the flavour it is registered for', () => {
     expect(chessGamePdfAdapterMatcher.flavour).toBe(
@@ -42,10 +50,9 @@ describe('chess game pdf adapter', () => {
     expect(chessGamePdfAdapterMatcher.flavour).toBe('affine:chess-game');
   });
 
-  it('prints the board plus the movetext', async () => {
+  it('prints the board with OpenChessFont plus the movetext', async () => {
     const content = await render({ pgn: '1. e4 e5 2. Nf3 *' });
-    expect(svgOf(content[0])).toContain('<svg');
-    expect(svgOf(content[0])).not.toContain('<text');
+    expect(fontOf(content[0])).toBe('OpenChessFont');
     const texts = content.map(textOf).filter(text => text !== undefined);
     expect(texts.some(text => text.includes('Nf3'))).toBe(true);
     // Headers are dropped: the movetext is the reader's content.
@@ -53,14 +60,14 @@ describe('chess game pdf adapter', () => {
   });
 
   it('draws the position the reader is looking at', async () => {
-    const start = svgOf((await render({ pgn: '1. e4 e5 *' }))[0]);
-    const afterE4 = svgOf(
+    const start = textOf((await render({ pgn: '1. e4 e5 *' }))[0]);
+    const afterE4 = textOf(
       (await render({ pgn: '1. e4 e5 *', currentPath: [0] }))[0]
     );
     expect(afterE4).not.toBe(start);
     // A path that does not exist falls back to the setup position.
     expect(
-      svgOf((await render({ pgn: '1. e4 e5 *', currentPath: [9] }))[0])
+      textOf((await render({ pgn: '1. e4 e5 *', currentPath: [9] }))[0])
     ).toBe(start);
   });
 
@@ -78,13 +85,14 @@ describe('chess game pdf adapter', () => {
 
   it('keeps an unreadable PGN verbatim and draws no board', async () => {
     const content = await render({ pgn: '[[[[' });
-    expect(content.every(entry => svgOf(entry) === undefined)).toBe(true);
+    expect(content.every(entry => fontOf(entry) === undefined)).toBe(true);
     expect(content.map(textOf)).toContain('[[[[');
   });
 
   it('draws the start position for an empty game and no movetext', async () => {
     const content = await render({ pgn: EMPTY_PGN });
-    expect(svgOf(content[0])).toContain('<g transform="translate(0 7)');
+    expect(fontOf(content[0])).toBe('OpenChessFont');
+    expect(textOf(content[0])).toContain('8TmVwLvMt8');
     expect(content).toHaveLength(1);
   });
 

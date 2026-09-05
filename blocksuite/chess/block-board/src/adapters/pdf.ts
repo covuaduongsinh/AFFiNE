@@ -7,6 +7,7 @@ import {
 import {
   type BoardSvgArrow,
   type BoardSvgHighlight,
+  fenToChessFontText,
   fenToSvg,
 } from '@blocksuite/chess-core';
 
@@ -46,7 +47,7 @@ function readHighlights(value: unknown): BoardSvgHighlight[] {
 }
 
 /**
- * Boards print as a vector diagram plus their caption.
+ * Maps an `affine:chess-board` snapshot to a sized vector board on the PDF.
  *
  * `extraLines` and `extraAnnotations` stay out: they are round-trip bytes for
  * the reader's Obsidian vault, not something a reader of the PDF asked for.
@@ -59,21 +60,37 @@ export const chessBoardPdfAdapterMatcher: BlockPdfAdapterMatcher = {
         ? props.fen
         : START_FEN;
     const orientation = props.orientation === 'black' ? 'black' : 'white';
-    const content: PdfContent[] = [
-      {
+    const arrows = readArrows(props.arrows);
+    const highlights = readHighlights(props.highlights);
+    const hasAnnotations = arrows.length > 0 || highlights.length > 0;
+
+    let boardContent: PdfContent;
+    if (hasAnnotations) {
+      boardContent = {
         svg: fenToSvg(fen, {
           orientation,
           size: BOARD_SIZE,
-          arrows: readArrows(props.arrows),
-          highlights: readHighlights(props.highlights),
+          arrows,
+          highlights,
           textInSvg: false,
         }),
         width: BOARD_SIZE,
         height: BOARD_SIZE,
         margin: [0, 8, 0, 4],
         alignment: 'center',
-      },
-    ];
+      };
+    } else {
+      boardContent = {
+        text: fenToChessFontText(fen, { orientation, border: true }),
+        font: 'OpenChessFont',
+        fontSize: 22,
+        lineHeight: 1.0,
+        margin: [0, 8, 0, 4],
+        alignment: 'center',
+      };
+    }
+
+    const content: PdfContent[] = [boardContent];
 
     const caption = typeof props.caption === 'string' ? props.caption : '';
     if (caption !== '') {

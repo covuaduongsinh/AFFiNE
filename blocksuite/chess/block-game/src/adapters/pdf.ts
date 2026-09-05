@@ -6,7 +6,7 @@ import {
 } from '@blocksuite/affine-shared/adapters';
 import {
   captionFromHeaders,
-  fenToSvg,
+  fenToChessFontText,
   type Game,
   parsePgn,
   positionAt,
@@ -23,28 +23,27 @@ const BOARD_SIZE = 320;
  * Games print as the position currently on show plus the movetext.
  *
  * `analysisJson` stays out — it is a local engine overlay, not part of the game
- * — and an unreadable PGN is emitted verbatim rather than guessed at: a board
- * drawn from a misparse would be a lie, and dropping the text would lose the
- * author's only copy.
+ * the reader authored. The movetext is serialized back out without NAGs so the
+ * text stays readable on paper.
  */
 export const chessGamePdfAdapterMatcher: BlockPdfAdapterMatcher = {
   flavour: ChessGameBlockSchema.model.flavour,
-  toContent: (_block, { props, baseIndent }) => {
-    const pgn = typeof props.pgn === 'string' ? props.pgn : EMPTY_PGN;
+  toContent: (_block, { props, baseIndent = 0 }) => {
+    const rawPgn =
+      typeof props.pgn === 'string' && props.pgn.trim() !== ''
+        ? props.pgn
+        : EMPTY_PGN;
     const orientation = props.orientation === 'black' ? 'black' : 'white';
 
     let game: Game;
     try {
-      game = parsePgn(pgn);
+      game = parsePgn(rawPgn);
     } catch {
       return [
         {
-          text: pgn,
+          text: rawPgn,
           fontSize: 10,
-          font: 'Inter',
-          color: PDF_COLORS.text,
-          background: PDF_COLORS.codeBackground,
-          margin: [baseIndent, 4, 0, 8],
+          margin: [0, 8, 0, 4],
         },
       ];
     }
@@ -55,15 +54,16 @@ export const chessGamePdfAdapterMatcher: BlockPdfAdapterMatcher = {
         ? props.currentPath
         : [];
 
+    const fen = toFen(positionAt(game, currentPath));
     const content: PdfContent[] = [
       {
-        svg: fenToSvg(toFen(positionAt(game, currentPath)), {
+        text: fenToChessFontText(fen, {
           orientation,
-          size: BOARD_SIZE,
-          textInSvg: false,
+          border: true,
         }),
-        width: BOARD_SIZE,
-        height: BOARD_SIZE,
+        font: 'OpenChessFont',
+        fontSize: 22,
+        lineHeight: 1.0,
         margin: [0, 8, 0, 4],
         alignment: 'center',
       },

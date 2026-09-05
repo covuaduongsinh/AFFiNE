@@ -35,6 +35,14 @@ const textOf = (entry: unknown): string | undefined => {
   return undefined;
 };
 
+const fontOf = (entry: unknown): string | undefined => {
+  if (entry && typeof entry === 'object' && 'font' in entry) {
+    const font = entry.font;
+    if (typeof font === 'string') return font;
+  }
+  return undefined;
+};
+
 describe('chess board pdf adapter', () => {
   it('claims the flavour it is registered for', () => {
     expect(chessBoardPdfAdapterMatcher.flavour).toBe(
@@ -43,18 +51,27 @@ describe('chess board pdf adapter', () => {
     expect(chessBoardPdfAdapterMatcher.flavour).toBe('affine:chess-board');
   });
 
-  it('draws the position as a sized vector board without <text> tags', async () => {
+  it('draws the clean position with OpenChessFont', async () => {
     const content = await render({ fen: START_FEN, orientation: 'white' });
     expect(content).toHaveLength(1);
-    expect(svgOf(content[0])).toContain('<svg');
-    expect(svgOf(content[0])).not.toContain('<text');
-    expect(content[0]).toMatchObject({ width: 320, height: 320 });
+    expect(fontOf(content[0])).toBe('OpenChessFont');
+    const text = textOf(content[0]);
+    expect(text).toBeDefined();
+    // Border top and starting piece row
+    expect(text).toContain('!"#$%&\'()');
+    expect(text).toContain('8TmVwLvMt8');
+    expect(text).toContain('1rNbQkBnR1');
+    expect(content[0]).toMatchObject({
+      font: 'OpenChessFont',
+      fontSize: 22,
+      alignment: 'center',
+    });
   });
 
   it('falls back to the start position when the fen is missing', async () => {
-    const empty = svgOf((await render({}))[0]);
-    expect(empty).toBe(svgOf((await render({ fen: START_FEN }))[0]));
-    expect(svgOf((await render({ fen: '   ' }))[0])).toBe(empty);
+    const empty = textOf((await render({}))[0]);
+    expect(empty).toBe(textOf((await render({ fen: START_FEN }))[0]));
+    expect(textOf((await render({ fen: '   ' }))[0])).toBe(empty);
   });
 
   it('prints the caption under the board', async () => {
@@ -63,7 +80,7 @@ describe('chess board pdf adapter', () => {
     expect(textOf(content[1])).toBe('Thế bắt đầu');
   });
 
-  it('carries annotations onto the diagram and drops malformed ones', async () => {
+  it('falls back to SVG when arrows or highlights are present', async () => {
     const content = await render({
       fen: START_FEN,
       arrows: [{ from: 'e2', to: 'e4' }, { from: 'e2' }, 'nonsense'],
@@ -73,6 +90,7 @@ describe('chess board pdf adapter', () => {
     expect(svg).toContain('<polygon');
     expect(svg.split('<polygon').length - 1).toBe(1);
     expect(svg).toContain('fill="#ffce00"');
+    expect(content[0]).toMatchObject({ width: 320, height: 320 });
   });
 
   it('leaves the Obsidian round-trip payload out of the PDF', async () => {

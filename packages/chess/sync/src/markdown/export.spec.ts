@@ -5,7 +5,9 @@ import { sanitizeFilename, yDocToMarkdown } from './export.js';
 
 describe('Markdown Exporter', () => {
   it('sanitizes filenames correctly', () => {
-    expect(sanitizeFilename('test / new : update ? *')).toBe('test - new - update');
+    expect(sanitizeFilename('test / new : update ? *')).toBe(
+      'test - new - update'
+    );
     expect(sanitizeFilename('   ')).toBe('Untitled');
     expect(sanitizeFilename('My Note.md')).toBe('My Note.md');
   });
@@ -80,7 +82,9 @@ describe('Markdown Exporter', () => {
     expect(result?.markdown).toContain('# Welcome to AFFiNE');
     expect(result?.markdown).toContain('Hello world');
     expect(result?.markdown).toContain('- [x] Complete task');
-    expect(result?.markdown).toContain('```typescript\nconsole.log("hello");\n```');
+    expect(result?.markdown).toContain(
+      '```typescript\nconsole.log("hello");\n```'
+    );
     expect(result?.markdown).toContain('```pgn\n1. e4 e5 2. Nf3 Nc6\n```');
   });
 });

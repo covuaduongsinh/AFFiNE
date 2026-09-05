@@ -15,6 +15,10 @@ export {
   type BoardSvgPalette,
   fenToSvg,
 } from './board-svg.js';
+export {
+  type ChessFontDiagramOptions,
+  fenToChessFontText,
+} from './diagram-font.js';
 export { type ChessTextMatch, detectChessText } from './detect.js';
 export {
   deleteFrom,

@@ -341,7 +341,11 @@ export async function exportAllDocsToMarkdown(
     // 2. Also include any remaining pairs from DB
     for (const row of [...snaps, ...updates]) {
       const key = `${row.workspaceId}:${row.docId}`;
-      if (!seen.has(key) && !row.docId.startsWith('db$') && !row.docId.startsWith('userdata$')) {
+      if (
+        !seen.has(key) &&
+        !row.docId.startsWith('db$') &&
+        !row.docId.startsWith('userdata$')
+      ) {
         seen.add(key);
         pairs.push(row);
       }

@@ -206,10 +206,10 @@ trình đầy đủ ở [../docs/an-toan-du-lieu.md](../docs/an-toan-du-lieu.md)
 Hai nửa của stack cập nhật theo hai cơ chế khác nhau, và nhầm chỗ này dẫn tới một site trông như
 đã cập nhật nhưng thực ra không.
 
-| Sửa gì | Cách đưa lên |
-| ------ | ------------ |
-| **Backend** `packages/chess/sync` | Dokploy đóng gói thành Docker image. Sửa file trong `/etc/dokploy/affine/sync` **không có tác dụng gì** — thứ đang chạy là image, không phải thư mục. Phải `compose.deploy` |
-| **Bản web tĩnh** `web/`, `web-mobile/` | Caddy đọc thẳng từ đĩa qua bind mount. Ghi đè file là **có hiệu lực ngay**, không cần deploy |
+| Sửa gì                                 | Cách đưa lên                                                                                                                                                                |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Backend** `packages/chess/sync`      | Dokploy đóng gói thành Docker image. Sửa file trong `/etc/dokploy/affine/sync` **không có tác dụng gì** — thứ đang chạy là image, không phải thư mục. Phải `compose.deploy` |
+| **Bản web tĩnh** `web/`, `web-mobile/` | Caddy đọc thẳng từ đĩa qua bind mount. Ghi đè file là **có hiệu lực ngay**, không cần deploy                                                                                |
 
 ### Đừng thay bản web bằng cách đổi tên thư mục
 

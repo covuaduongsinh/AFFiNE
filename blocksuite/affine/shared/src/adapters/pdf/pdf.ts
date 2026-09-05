@@ -74,6 +74,12 @@ pdfMake.fonts = {
     italics: getPdfFontUrl('SarasaGothicCL-Regular.ttf'),
     bolditalics: getPdfFontUrl('SarasaGothicCL-Regular.ttf'),
   },
+  OpenChessFont: {
+    normal: getPdfFontUrl('OpenChessFont.ttf'),
+    bold: getPdfFontUrl('OpenChessFont.ttf'),
+    italics: getPdfFontUrl('OpenChessFont.ttf'),
+    bolditalics: getPdfFontUrl('OpenChessFont.ttf'),
+  },
 };
 
 export type PdfAdapterFile = {

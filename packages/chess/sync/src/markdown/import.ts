@@ -855,13 +855,7 @@ export async function scanAndImportWorkspaceMarkdown(
           pages.delete(toDeleteIndices[i], 1);
         }
         const rootUpdate = Y.encodeStateAsUpdate(rootDoc);
-        await pushUpdate(
-          state,
-          workspaceId,
-          workspaceId,
-          rootUpdate,
-          ownerId
-        );
+        await pushUpdate(state, workspaceId, workspaceId, rootUpdate, ownerId);
       }
     }
     releaseDoc(workspaceId, workspaceId);
