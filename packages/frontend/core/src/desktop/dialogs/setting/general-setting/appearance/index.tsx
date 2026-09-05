@@ -1,5 +1,11 @@
 import type { RadioItem } from '@affine/component';
-import { RadioGroup, Switch } from '@affine/component';
+import {
+  Menu,
+  MenuItem,
+  MenuTrigger,
+  RadioGroup,
+  Switch,
+} from '@affine/component';
 import {
   SettingHeader,
   SettingRow,
@@ -9,6 +15,10 @@ import { LanguageMenu } from '@affine/core/components/affine/language-menu';
 import { TraySettingService } from '@affine/core/modules/editor-setting/services/tray-settings';
 import { FeatureFlagService } from '@affine/core/modules/feature-flag';
 import { useI18n } from '@affine/i18n';
+import {
+  type ChessPieceSet,
+  PIECE_SETS_METADATA,
+} from '@blocksuite/chess-core';
 import { useLiveData, useService } from '@toeverything/infra';
 import { useTheme } from 'next-themes';
 import { useCallback, useMemo } from 'react';
@@ -157,6 +167,43 @@ const MenubarSetting = () => {
   );
 };
 
+const ChessPieceSetMenu = () => {
+  const { appSettings, updateSettings } = useAppSettingHelper();
+  const currentSet = appSettings.chessPieceSet ?? 'staunton';
+
+  const options = useMemo(
+    () =>
+      (Object.keys(PIECE_SETS_METADATA) as ChessPieceSet[]).map(key => ({
+        value: key,
+        label: PIECE_SETS_METADATA[key].name,
+        desc: PIECE_SETS_METADATA[key].description,
+      })),
+    []
+  );
+
+  return (
+    <Menu
+      items={options.map(option => (
+        <MenuItem
+          key={option.value}
+          title={option.label}
+          onSelect={() => updateSettings('chessPieceSet', option.value)}
+          data-selected={currentSet === option.value}
+        >
+          {option.label}
+        </MenuItem>
+      ))}
+      contentOptions={{
+        align: 'end',
+      }}
+    >
+      <MenuTrigger style={{ fontWeight: 600, width: '250px' }} block={true}>
+        {PIECE_SETS_METADATA[currentSet]?.name ?? 'Staunton Classic'}
+      </MenuTrigger>
+    </Menu>
+  );
+};
+
 export const AppearanceSettings = () => {
   const t = useI18n();
 
@@ -201,6 +248,18 @@ export const AppearanceSettings = () => {
           </SettingRow>
         ) : null}
         {enableThemeEditor ? <ThemeEditorSetting /> : null}
+      </SettingWrapper>
+
+      <SettingWrapper title={t['com.affine.appearanceSettings.chess.title']()}>
+        <SettingRow
+          name={t['com.affine.appearanceSettings.chess.pieceSet.title']()}
+          desc={t['com.affine.appearanceSettings.chess.pieceSet.description']()}
+          data-testid="chess-piece-set-trigger"
+        >
+          <div className={settingWrapper}>
+            <ChessPieceSetMenu />
+          </div>
+        </SettingRow>
       </SettingWrapper>
 
       <SettingWrapper title={t['com.affine.appearanceSettings.images.title']()}>

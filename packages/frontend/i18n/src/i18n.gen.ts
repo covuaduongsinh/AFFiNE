@@ -1240,6 +1240,18 @@ export function useAFFiNEI18N(): {
       */
     ["com.affine.appearanceSettings.menubar.windowBehavior.startMinimized.description"](): string;
     /**
+      * `Chess`
+      */
+    ["com.affine.appearanceSettings.chess.title"](): string;
+    /**
+      * `Chess Piece Set`
+      */
+    ["com.affine.appearanceSettings.chess.pieceSet.title"](): string;
+    /**
+      * `Choose the default chess piece style across all chessboards in the workspace.`
+      */
+    ["com.affine.appearanceSettings.chess.pieceSet.description"](): string;
+    /**
       * `Theme`
       */
     ["com.affine.appearanceSettings.theme.title"](): string;

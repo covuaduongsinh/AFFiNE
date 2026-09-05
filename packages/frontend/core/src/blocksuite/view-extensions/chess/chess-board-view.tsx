@@ -5,6 +5,7 @@ import {
   type PieceLetter,
   type SquareName,
 } from '@affine/component/ui/chess';
+import { useAppSettingHelper } from '@affine/core/components/hooks/affine/use-app-setting-helper';
 import { ChessReviewService } from '@affine/core/modules/chess-review';
 import { useSignalValue } from '@affine/core/modules/doc-info/utils';
 import { I18n } from '@affine/i18n';
@@ -136,8 +137,9 @@ export const ChessBoardView = ({ model }: ChessBoardViewProps) => {
     stop,
   } = useChessAnalysis(model.id);
 
+  const { appSettings, updateSettings } = useAppSettingHelper();
+  const pieceSet = appSettings.chessPieceSet ?? 'staunton';
   const [selected, setSelected] = useState<string | null>(null);
-  const [pieceSet, setPieceSet] = useState<ChessPieceSet>('staunton');
   /** `null` when the position editor is closed; the draft FEN when open. */
   const [draft, setDraft] = useState<string | null>(null);
   const [tool, setTool] = useState<SetupTool>('hand');
@@ -154,11 +156,10 @@ export const ChessBoardView = ({ model }: ChessBoardViewProps) => {
       'firi',
       'geometric',
     ];
-    setPieceSet(current => {
-      const idx = (keys.indexOf(current) + 1) % keys.length;
-      return keys[idx];
-    });
-  }, []);
+    const current = appSettings.chessPieceSet ?? 'staunton';
+    const next = keys[(keys.indexOf(current) + 1) % keys.length];
+    updateSettings('chessPieceSet', next);
+  }, [appSettings.chessPieceSet, updateSettings]);
 
   const readonly = model.store.readonly;
   /**

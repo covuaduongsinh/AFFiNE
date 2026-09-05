@@ -1,5 +1,6 @@
 import { Modal, notify } from '@affine/component';
 import { Chessboard } from '@affine/component/ui/chess';
+import { useAppSettingHelper } from '@affine/core/components/hooks/affine/use-app-setting-helper';
 import {
   ChessAssignmentService,
   isSubmissionLocked,
@@ -426,8 +427,9 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
   /** Mobile only: the coach has no sidebar to live in, so it gets a sheet. */
   const [coachOpen, setCoachOpen] = useState(false);
 
+  const { appSettings, updateSettings } = useAppSettingHelper();
+  const pieceSet = appSettings.chessPieceSet ?? 'staunton';
   const [selected, setSelected] = useState<string | null>(null);
-  const [pieceSet, setPieceSet] = useState<ChessPieceSet>('staunton');
   /** `null` when the PGN editor is closed; the draft text when it is open. */
   const [draft, setDraft] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -441,11 +443,10 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
       'firi',
       'geometric',
     ];
-    setPieceSet(current => {
-      const idx = (keys.indexOf(current) + 1) % keys.length;
-      return keys[idx];
-    });
-  }, []);
+    const current = appSettings.chessPieceSet ?? 'staunton';
+    const next = keys[(keys.indexOf(current) + 1) % keys.length];
+    updateSettings('chessPieceSet', next);
+  }, [appSettings.chessPieceSet, updateSettings]);
 
   const game = useMemo<Game | null>(() => {
     try {

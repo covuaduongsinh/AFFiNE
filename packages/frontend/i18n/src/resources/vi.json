@@ -189,5 +189,8 @@
   "com.affine.chess.review.correct": "Đúng",
   "com.affine.chess.review.solution": "Đáp án",
   "com.affine.settings.workspace.experimental-features.enable-chess-pedagogy.name": "Bật kho ván cờ",
-  "com.affine.settings.workspace.experimental-features.enable-chess-pedagogy.description": "Nhập PGN/Lichess, chỉ mục ván, giao bài và ôn tập ngắt quãng."
+  "com.affine.settings.workspace.experimental-features.enable-chess-pedagogy.description": "Nhập PGN/Lichess, chỉ mục ván, giao bài và ôn tập ngắt quãng.",
+  "com.affine.appearanceSettings.chess.title": "Cờ vua",
+  "com.affine.appearanceSettings.chess.pieceSet.title": "Bộ quân cờ",
+  "com.affine.appearanceSettings.chess.pieceSet.description": "Chọn kiểu quân cờ mặc định cho toàn bộ bàn cờ trong không gian làm việc."
 }

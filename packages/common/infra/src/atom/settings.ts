@@ -18,6 +18,13 @@ export type AppSetting = {
   enableTelemetry: boolean;
   showLinkedDocInSidebar: boolean;
   disableImageAntialiasing: boolean;
+  chessPieceSet:
+    | 'staunton'
+    | 'kosal'
+    | 'celtic'
+    | 'rhosgfx'
+    | 'firi'
+    | 'geometric';
 };
 export const windowFrameStyleOptions: AppSetting['windowFrameStyle'][] = [
   'frameless',
@@ -37,6 +44,7 @@ const appSettingBaseAtom = atomWithStorage<AppSetting>(
     enableTelemetry: true,
     showLinkedDocInSidebar: true,
     disableImageAntialiasing: false,
+    chessPieceSet: 'staunton',
   },
   undefined,
   {
