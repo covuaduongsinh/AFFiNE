@@ -814,12 +814,14 @@ export async function scanAndImportWorkspaceMarkdown(
 
   // Deduplicate and cleanup meta.pages in rootDoc
   try {
+    const ownerId = await getOwnerId(state, workspaceId);
     const rootDoc = await loadYDoc(state, workspaceId, workspaceId);
     const metaMap = rootDoc.getMap('meta');
     const pages = metaMap.get('pages') as Y.Array<unknown> | undefined;
     if (pages && pages instanceof Y.Array) {
       const seenIds = new Set<string>();
       const toDeleteIndices: number[] = [];
+      let pagesModified = false;
       pages.forEach((p, idx) => {
         if (p instanceof Y.Map) {
           const id = p.get('id') as string;
@@ -827,12 +829,20 @@ export async function scanAndImportWorkspaceMarkdown(
             toDeleteIndices.push(idx);
           } else {
             seenIds.add(id);
+            if (!p.get('createdBy')) {
+              p.set('createdBy', ownerId);
+              pagesModified = true;
+            }
+            if (!p.get('updatedBy')) {
+              p.set('updatedBy', ownerId);
+              pagesModified = true;
+            }
           }
         } else {
           toDeleteIndices.push(idx);
         }
       });
-      if (toDeleteIndices.length > 0) {
+      if (toDeleteIndices.length > 0 || pagesModified) {
         for (let i = toDeleteIndices.length - 1; i >= 0; i--) {
           pages.delete(toDeleteIndices[i], 1);
         }
@@ -842,7 +852,7 @@ export async function scanAndImportWorkspaceMarkdown(
           workspaceId,
           workspaceId,
           rootUpdate,
-          'system:cleanup'
+          ownerId
         );
       }
     }
