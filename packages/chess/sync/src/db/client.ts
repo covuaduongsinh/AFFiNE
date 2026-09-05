@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { PGlite } from '@electric-sql/pglite';
@@ -122,6 +123,14 @@ export async function openDatabase(
   await mkdir(join(dataDir, 'blobs'), { recursive: true });
   await mkdir(join(dataDir, 'markdown'), { recursive: true });
   await mkdir(pgDir, { recursive: true });
+
+  const pidFile = join(pgDir, 'postmaster.pid');
+  if (existsSync(pidFile)) {
+    try {
+      await unlink(pidFile);
+    } catch {}
+  }
+
   let pg: PGlite;
   try {
     pg = new PGlite({ fs: new NodeFS(pgDir) });
