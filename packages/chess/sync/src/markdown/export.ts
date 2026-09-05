@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -221,7 +222,9 @@ export async function exportDocToMarkdownFile(
   const filePath = join(markdownDir, fileName);
 
   const docMap = await getDocMap(markdownDir);
-  const oldFileName = docMap[docId];
+  const oldEntry = docMap[docId];
+  const oldFileName =
+    typeof oldEntry === 'string' ? oldEntry : oldEntry?.fileName;
   if (oldFileName && oldFileName !== fileName) {
     const oldPath = join(markdownDir, oldFileName);
     if (existsSync(oldPath)) {
@@ -229,7 +232,10 @@ export async function exportDocToMarkdownFile(
     }
   }
 
-  docMap[docId] = fileName;
+  const hash = createHash('sha256')
+    .update(result.markdown, 'utf8')
+    .digest('hex');
+  docMap[docId] = { fileName, hash, updatedAt: Date.now() };
   await saveDocMap(markdownDir, docMap);
   await writeFile(filePath, result.markdown, 'utf8');
   return filePath;
@@ -242,7 +248,8 @@ export async function removeDocMarkdownFile(
 ): Promise<void> {
   const markdownDir = join(state.db.dataDir, 'markdown', workspaceId);
   const docMap = await getDocMap(markdownDir);
-  const fileName = docMap[docId];
+  const entry = docMap[docId];
+  const fileName = typeof entry === 'string' ? entry : entry?.fileName;
   if (fileName) {
     const filePath = join(markdownDir, fileName);
     if (existsSync(filePath)) {

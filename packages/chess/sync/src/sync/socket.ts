@@ -324,12 +324,37 @@ export function attachSocket(app: FastifyInstance, state: AppState) {
           return;
         }
         await socket.join(spaceRoom(payload.spaceType, payload.spaceId));
-        ackData(ack, { clientId: socket.id });
+        ackData(ack, { clientId: socket.id, success: true });
       } catch (error) {
         ackError(
           ack,
           'INTERNAL',
           error instanceof Error ? error.message : 'join failed'
+        );
+      }
+    });
+
+    socket.on('space:join-batch', async (payload, ack) => {
+      try {
+        const user = await userFromSocket(state, socket);
+        if (!user) {
+          ackError(ack, 'UNAUTHORIZED', 'unauthorized');
+          return;
+        }
+        if (Array.isArray(payload.spaces)) {
+          for (const sp of payload.spaces) {
+            const member = await getMember(state, sp.spaceId, user.id);
+            if (member && member.status === 'Accepted') {
+              await socket.join(spaceRoom(sp.spaceType, sp.spaceId));
+            }
+          }
+        }
+        ackData(ack, { clientId: socket.id, success: true });
+      } catch (error) {
+        ackError(
+          ack,
+          'INTERNAL',
+          error instanceof Error ? error.message : 'join-batch failed'
         );
       }
     });
@@ -382,11 +407,11 @@ export function attachSocket(app: FastifyInstance, state: AppState) {
         ackData(ack, { timestamp });
         socket
           .to(spaceRoom(payload.spaceType, payload.spaceId))
-          .emit('space:broadcast-doc-update', {
+          .emit('space:broadcast-doc-updates', {
             spaceType: payload.spaceType,
             spaceId: payload.spaceId,
             docId: payload.docId,
-            update: payload.update,
+            updates: [payload.update],
             timestamp,
             editor: user.id,
           });
@@ -433,7 +458,7 @@ export function attachSocket(app: FastifyInstance, state: AppState) {
           awareRoom(payload.spaceType, payload.spaceId, payload.docId)
         )
       );
-      ackData(ack, { clientId: socket.id });
+      ackData(ack, { clientId: socket.id, success: true });
       io.to(awareRoom(payload.spaceType, payload.spaceId, payload.docId)).emit(
         'space:collect-awareness',
         {

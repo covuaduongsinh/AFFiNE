@@ -408,8 +408,24 @@ export async function importMarkdownFile(
       targetDocId = docId;
       const entryHash = typeof entry === 'object' ? entry.hash : null;
       if (entryHash === hash) {
-        // Content hasn't changed, skip to avoid loops
-        return null;
+        // Content hasn't changed; verify rootDoc already has targetDocId in meta.pages
+        const rootDoc = await loadYDoc(state, workspaceId, workspaceId);
+        const metaMap = rootDoc.getMap('meta');
+        const pages = metaMap.get('pages') as Y.Array<unknown> | undefined;
+        let hasPage = false;
+        if (pages && pages instanceof Y.Array) {
+          for (let i = 0; i < pages.length; i++) {
+            const p = pages.get(i);
+            if (p instanceof Y.Map && p.get('id') === targetDocId) {
+              hasPage = true;
+              break;
+            }
+          }
+        }
+        releaseDoc(workspaceId, workspaceId);
+        if (hasPage) {
+          return null;
+        }
       }
       break;
     }
@@ -602,6 +618,45 @@ export async function scanAndImportWorkspaceMarkdown(
 
   if (mapModified) {
     await saveDocMap(markdownDir, docMap);
+  }
+
+  // Deduplicate and cleanup meta.pages in rootDoc
+  try {
+    const rootDoc = await loadYDoc(state, workspaceId, workspaceId);
+    const metaMap = rootDoc.getMap('meta');
+    const pages = metaMap.get('pages') as Y.Array<unknown> | undefined;
+    if (pages && pages instanceof Y.Array) {
+      const seenIds = new Set<string>();
+      const toDeleteIndices: number[] = [];
+      pages.forEach((p, idx) => {
+        if (p instanceof Y.Map) {
+          const id = p.get('id') as string;
+          if (!id || seenIds.has(id)) {
+            toDeleteIndices.push(idx);
+          } else {
+            seenIds.add(id);
+          }
+        } else {
+          toDeleteIndices.push(idx);
+        }
+      });
+      if (toDeleteIndices.length > 0) {
+        for (let i = toDeleteIndices.length - 1; i >= 0; i--) {
+          pages.delete(toDeleteIndices[i], 1);
+        }
+        const rootUpdate = Y.encodeStateAsUpdate(rootDoc);
+        await pushUpdate(
+          state,
+          workspaceId,
+          workspaceId,
+          rootUpdate,
+          'system:cleanup'
+        );
+      }
+    }
+    releaseDoc(workspaceId, workspaceId);
+  } catch (err) {
+    console.error(`[MarkdownImport ERROR] deduplicating pages:`, err);
   }
 
   return count;

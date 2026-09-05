@@ -121,14 +121,16 @@ export async function pushUpdate(
   scheduleDocMarkdownExport(state, workspaceId, docId);
 
   if (state.io) {
-    state.io.to(`space:workspace:${workspaceId}`).emit('space:broadcast-doc-update', {
-      spaceType: 'workspace',
-      spaceId: workspaceId,
-      docId,
-      update: bytesToBase64(update),
-      timestamp,
-      editor,
-    });
+    state.io
+      .to(`space:workspace:${workspaceId}`)
+      .emit('space:broadcast-doc-updates', {
+        spaceType: 'workspace',
+        spaceId: workspaceId,
+        docId,
+        updates: [bytesToBase64(update)],
+        timestamp,
+        editor,
+      });
   }
 
   return timestamp;
