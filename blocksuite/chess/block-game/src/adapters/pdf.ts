@@ -6,7 +6,7 @@ import {
 } from '@blocksuite/affine-shared/adapters';
 import {
   captionFromHeaders,
-  fenToChessFontText,
+  DIAGRAM_BOOK_PALETTE,
   fenToSvg,
   type Game,
   parsePgn,
@@ -21,16 +21,16 @@ import { ChessGameBlockSchema, EMPTY_PGN } from '../model.js';
 const BOARD_SIZE = 320;
 
 /**
- * Games print as the position currently on show plus the movetext.
+ * Maps an `affine:chess-game` snapshot to a diagram + movetext block on the PDF.
  *
- * `analysisJson` stays out — it is a local engine overlay, not part of the game
- * the reader authored. The movetext is serialized back out without NAGs so the
- * text stays readable on paper.
+ * Headers go to a muted caption above or below the diagram, never to the move
+ * stream; movetext is single-spaced and drops the root `[Tag "Val"]` lines.
  */
 export const chessGamePdfAdapterMatcher: BlockPdfAdapterMatcher = {
   flavour: ChessGameBlockSchema.model.flavour,
-  toContent: (_block, { props, baseIndent = 0, configs }) => {
-    const rawPgn =
+  toContent: (_block, { props, configs }) => {
+    const baseIndent = 0;
+    const pgn =
       typeof props.pgn === 'string' && props.pgn.trim() !== ''
         ? props.pgn
         : EMPTY_PGN;
@@ -38,11 +38,11 @@ export const chessGamePdfAdapterMatcher: BlockPdfAdapterMatcher = {
 
     let game: Game;
     try {
-      game = parsePgn(rawPgn);
+      game = parsePgn(pgn);
     } catch {
       return [
         {
-          text: rawPgn,
+          text: pgn,
           fontSize: 10,
           margin: [0, 8, 0, 4],
         },
@@ -56,29 +56,28 @@ export const chessGamePdfAdapterMatcher: BlockPdfAdapterMatcher = {
         : [];
 
     const fen = toFen(positionAt(game, currentPath));
-    const useFont = configs?.get('chessDiagramStyle') === 'font';
+    const isDiagramMode =
+      configs?.get('chessDiagramStyle') === 'font' ||
+      configs?.get('chessDiagramStyle') === 'diagram' ||
+      props.pieceSet === 'diagram';
 
-    const diagramContent: PdfContent = useFont
-      ? {
-          text: fenToChessFontText(fen, { orientation }),
-          font: 'OpenChessFont',
-          fontSize: 22,
-          lineHeight: 1.0,
-          alignment: 'center',
-          margin: [0, 8, 0, 4],
-          preserveLeadingSpaces: true,
-        }
-      : {
-          svg: fenToSvg(fen, {
-            orientation,
-            size: BOARD_SIZE,
-            textInSvg: false,
-          }),
-          width: BOARD_SIZE,
-          height: BOARD_SIZE,
-          margin: [0, 8, 0, 4],
-          alignment: 'center',
-        };
+    const diagramContent: PdfContent = {
+      svg: fenToSvg(fen, {
+        orientation,
+        size: BOARD_SIZE,
+        palette: isDiagramMode ? DIAGRAM_BOOK_PALETTE : undefined,
+        pieceSet: isDiagramMode
+          ? 'diagram'
+          : typeof props.pieceSet === 'string'
+            ? (props.pieceSet as any)
+            : undefined,
+        textInSvg: false,
+      }),
+      width: BOARD_SIZE,
+      height: BOARD_SIZE,
+      margin: [0, 8, 0, 4],
+      alignment: 'center',
+    };
 
     const content: PdfContent[] = [diagramContent];
 

@@ -42,6 +42,20 @@ export const board = style({
     '&[data-interactive="true"]': {
       touchAction: 'none',
     },
+    '&[data-piece-set="diagram"]': {
+      vars: {
+        '--chess-square-light': '#ffffff',
+        '--chess-square-dark': '#d8d8d8',
+        '--chess-piece-light': '#ffffff',
+        '--chess-piece-dark': '#000000',
+        '--chess-last-move': 'rgba(0, 0, 0, 0.15)',
+        '--chess-selected': 'rgba(0, 0, 0, 0.25)',
+        '--chess-check': 'rgba(0, 0, 0, 0.35)',
+        '--chess-arrow': 'rgba(0, 0, 0, 0.75)',
+        '--chess-hint': 'rgba(0, 0, 0, 0.25)',
+      },
+      boxShadow: '0 0 0 1.5px #000000',
+    },
     '[data-theme="dark"] &': {
       vars: {
         '--chess-square-light': '#7d7266',
@@ -50,6 +64,20 @@ export const board = style({
         '--chess-piece-dark': '#16130f',
         '--chess-hint': 'rgba(0, 0, 0, 0.34)',
       },
+    },
+    '[data-theme="dark"] &[data-piece-set="diagram"]': {
+      vars: {
+        '--chess-square-light': '#ffffff',
+        '--chess-square-dark': '#d8d8d8',
+        '--chess-piece-light': '#ffffff',
+        '--chess-piece-dark': '#000000',
+        '--chess-last-move': 'rgba(0, 0, 0, 0.15)',
+        '--chess-selected': 'rgba(0, 0, 0, 0.25)',
+        '--chess-check': 'rgba(0, 0, 0, 0.35)',
+        '--chess-arrow': 'rgba(0, 0, 0, 0.75)',
+        '--chess-hint': 'rgba(0, 0, 0, 0.25)',
+      },
+      boxShadow: '0 0 0 1.5px #000000',
     },
   },
 });

@@ -34,6 +34,15 @@ export const BOARD_SVG_PALETTE: BoardSvgPalette = {
   arrow: 'rgba(21,128,61,0.72)',
 };
 
+/** Classic black-and-white publication diagram palette for books & training manuals. */
+export const DIAGRAM_BOOK_PALETTE: BoardSvgPalette = {
+  squareLight: '#ffffff',
+  squareDark: '#d8d8d8',
+  pieceLight: '#ffffff',
+  pieceDark: '#000000',
+  arrow: 'rgba(0,0,0,0.75)',
+};
+
 export interface BoardSvgArrow {
   from: string;
   to: string;
@@ -107,7 +116,9 @@ export function fenToSvg(fen: string, options: BoardSvgOptions = {}): string {
   const size = options.size ?? 320;
   const coordinates = options.coordinates !== false;
   const textInSvg = options.textInSvg !== false;
-  const palette = options.palette ?? BOARD_SVG_PALETTE;
+  const defaultPalette =
+    options.pieceSet === 'diagram' ? DIAGRAM_BOOK_PALETTE : BOARD_SVG_PALETTE;
+  const palette = options.palette ?? defaultPalette;
   const parts: string[] = [];
 
   const labels: string[] = [];

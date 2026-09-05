@@ -13,6 +13,7 @@ export {
   type BoardSvgHighlight,
   type BoardSvgOptions,
   type BoardSvgPalette,
+  DIAGRAM_BOOK_PALETTE,
   fenToSvg,
 } from './board-svg.js';
 export {

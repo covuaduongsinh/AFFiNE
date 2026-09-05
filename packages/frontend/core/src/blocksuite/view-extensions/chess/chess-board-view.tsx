@@ -148,14 +148,7 @@ export const ChessBoardView = ({ model }: ChessBoardViewProps) => {
   const [inkColor, setInkColor] = useState<AnnotationColorKey>('y');
 
   const cyclePieceSet = useCallback(() => {
-    const keys: ChessPieceSet[] = [
-      'staunton',
-      'kosal',
-      'celtic',
-      'rhosgfx',
-      'firi',
-      'geometric',
-    ];
+    const keys = Object.keys(PIECE_SETS_METADATA) as ChessPieceSet[];
     const current = appSettings.chessPieceSet ?? 'staunton';
     const next = keys[(keys.indexOf(current) + 1) % keys.length];
     updateSettings('chessPieceSet', next);

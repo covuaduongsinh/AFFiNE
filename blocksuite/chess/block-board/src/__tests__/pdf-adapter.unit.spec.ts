@@ -86,7 +86,7 @@ describe('chess board pdf adapter', () => {
     expect(JSON.stringify(content)).not.toContain('Ce4');
   });
 
-  it('renders chess diagram font text when chessDiagramStyle is font', async () => {
+  it('renders chess diagram vector SVG when chessDiagramStyle is font', async () => {
     const configs = new Map<string, unknown>([['chessDiagramStyle', 'font']]);
     const content = await chessBoardPdfAdapterMatcher.toContent(snapshot, {
       props: { fen: START_FEN },
@@ -94,7 +94,8 @@ describe('chess board pdf adapter', () => {
       configs,
     });
     expect(content).toHaveLength(1);
-    expect(textOf(content[0])).toContain('!"#$%&\'()*');
-    expect(content[0]).toMatchObject({ font: 'OpenChessFont', fontSize: 22 });
+    const svg = svgOf(content[0]) ?? '';
+    expect(svg).toContain('fill="#d8d8d8"');
+    expect(content[0]).toMatchObject({ width: 320, height: 320 });
   });
 });

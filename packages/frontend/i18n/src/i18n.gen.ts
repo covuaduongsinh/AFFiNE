@@ -240,7 +240,7 @@ export function useAFFiNEI18N(): {
       */
     ["Export to PDF (Vector)"](): string;
     /**
-      * `Export to PDF (Chess Font)`
+      * `Export to PDF (Chess Diagram)`
       */
     ["Export to PDF (Chess Font)"](): string;
     /**

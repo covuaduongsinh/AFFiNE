@@ -7,7 +7,7 @@ import {
 import {
   type BoardSvgArrow,
   type BoardSvgHighlight,
-  fenToChessFontText,
+  DIAGRAM_BOOK_PALETTE,
   fenToSvg,
 } from '@blocksuite/chess-core';
 
@@ -62,31 +62,30 @@ export const chessBoardPdfAdapterMatcher: BlockPdfAdapterMatcher = {
     const orientation = props.orientation === 'black' ? 'black' : 'white';
     const arrows = readArrows(props.arrows);
     const highlights = readHighlights(props.highlights);
-    const useFont = configs?.get('chessDiagramStyle') === 'font';
+    const isDiagramMode =
+      configs?.get('chessDiagramStyle') === 'font' ||
+      configs?.get('chessDiagramStyle') === 'diagram' ||
+      props.pieceSet === 'diagram';
 
-    const diagramContent: PdfContent = useFont
-      ? {
-          text: fenToChessFontText(fen, { orientation }),
-          font: 'OpenChessFont',
-          fontSize: 22,
-          lineHeight: 1.0,
-          alignment: 'center',
-          margin: [0, 8, 0, 4],
-          preserveLeadingSpaces: true,
-        }
-      : {
-          svg: fenToSvg(fen, {
-            orientation,
-            size: BOARD_SIZE,
-            arrows,
-            highlights,
-            textInSvg: false,
-          }),
-          width: BOARD_SIZE,
-          height: BOARD_SIZE,
-          margin: [0, 8, 0, 4],
-          alignment: 'center',
-        };
+    const diagramContent: PdfContent = {
+      svg: fenToSvg(fen, {
+        orientation,
+        size: BOARD_SIZE,
+        arrows,
+        highlights,
+        palette: isDiagramMode ? DIAGRAM_BOOK_PALETTE : undefined,
+        pieceSet: isDiagramMode
+          ? 'diagram'
+          : typeof props.pieceSet === 'string'
+            ? (props.pieceSet as any)
+            : undefined,
+        textInSvg: false,
+      }),
+      width: BOARD_SIZE,
+      height: BOARD_SIZE,
+      margin: [0, 8, 0, 4],
+      alignment: 'center',
+    };
 
     const content: PdfContent[] = [diagramContent];
 

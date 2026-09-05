@@ -314,6 +314,7 @@ export const Chessboard = ({
         ref={boardRef}
         className={styles.board}
         data-interactive={interactive ? 'true' : undefined}
+        data-piece-set={pieceSet}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
