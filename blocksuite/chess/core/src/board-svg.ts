@@ -8,7 +8,11 @@
  * inside pdfmake predates SVG 2.
  */
 
-import { PIECE_SHAPES, PIECE_VIEWBOX_SIZE } from './piece-shapes.js';
+import {
+  type ChessPieceSet,
+  PIECE_SETS,
+  PIECE_VIEWBOX_SIZE,
+} from './piece-shapes.js';
 import { readPlacement } from './setup.js';
 
 const FILES = 'abcdefgh';
@@ -50,6 +54,8 @@ export interface BoardSvgOptions {
   arrows?: readonly BoardSvgArrow[];
   highlights?: readonly BoardSvgHighlight[];
   palette?: BoardSvgPalette;
+  /** Chess piece set theme. Default 'staunton'. */
+  pieceSet?: ChessPieceSet;
 }
 
 /** Trims float noise so coordinates never serialize as `0.30000000000000004`. */
@@ -132,8 +138,10 @@ export function fenToSvg(fen: string, options: BoardSvgOptions = {}): string {
   }
 
   const scale = n(1 / PIECE_VIEWBOX_SIZE);
+  const activeSet =
+    PIECE_SETS[options.pieceSet ?? 'staunton'] ?? PIECE_SETS.staunton;
   for (const [square, letter] of readPlacement(fen)) {
-    const shapes = PIECE_SHAPES[letter.toLowerCase()];
+    const shapes = activeSet[letter.toLowerCase()];
     const corner = cornerOf(square, orientation);
     if (!shapes || !corner) continue;
     const isWhite = letter === letter.toUpperCase();

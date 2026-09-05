@@ -18,7 +18,7 @@ import { ServerFeature } from '@affine/graphql';
 import { I18n } from '@affine/i18n';
 import type { ChessGameBlockModel } from '@blocksuite/chess-block-game';
 import {
-  algebraicToSquare,
+  type ChessPieceSet,
   childrenAt,
   deleteFrom,
   findMove,
@@ -33,6 +33,7 @@ import {
   nodeAt,
   parseFen,
   parsePgn,
+  PIECE_SETS_METADATA,
   playMove,
   positionAt,
   promoteVariation,
@@ -426,9 +427,25 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
   const [coachOpen, setCoachOpen] = useState(false);
 
   const [selected, setSelected] = useState<string | null>(null);
+  const [pieceSet, setPieceSet] = useState<ChessPieceSet>('staunton');
   /** `null` when the PGN editor is closed; the draft text when it is open. */
   const [draft, setDraft] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const cyclePieceSet = useCallback(() => {
+    const keys: ChessPieceSet[] = [
+      'staunton',
+      'kosal',
+      'celtic',
+      'rhosgfx',
+      'firi',
+      'geometric',
+    ];
+    setPieceSet(current => {
+      const idx = (keys.indexOf(current) + 1) % keys.length;
+      return keys[idx];
+    });
+  }, []);
 
   const game = useMemo<Game | null>(() => {
     try {
@@ -792,6 +809,7 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
           <MemoChessboard
             fen={fenNow ?? toFen(position)}
             orientation={orientation}
+            pieceSet={pieceSet}
             interactive={!readonly}
             selected={selected}
             onSelect={setSelected}
@@ -837,6 +855,14 @@ export const ChessGameView = ({ model }: ChessGameViewProps) => {
           </button>
           <button className={styles.controlButton} onClick={flip} title="Flip">
             ⇅
+          </button>
+          <button
+            className={styles.controlButton}
+            onClick={cyclePieceSet}
+            title={`Đổi bộ quân cờ (Hiện tại: ${PIECE_SETS_METADATA[pieceSet].name})`}
+            data-testid="chess-game-piece-set-toggle"
+          >
+            {`Quân: ${PIECE_SETS_METADATA[pieceSet].name}`}
           </button>
           {!readonly && (
             <button

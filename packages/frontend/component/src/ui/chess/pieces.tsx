@@ -5,12 +5,17 @@
  * and the PDF exporter draw the same glyphs; only the theming is React's job.
  */
 
-import { PIECE_SHAPES, type PieceLetter } from '@blocksuite/chess-core';
+import {
+  type ChessPieceSet,
+  PIECE_SETS,
+  type PieceLetter,
+} from '@blocksuite/chess-core';
 
-export type { PieceLetter };
+export type { ChessPieceSet, PieceLetter };
 
 export interface ChessPieceProps {
   piece: PieceLetter;
+  pieceSet?: ChessPieceSet;
   className?: string;
 }
 
@@ -21,8 +26,13 @@ export interface ChessPieceProps {
  * reverse, so both stay legible on either square colour without needing a
  * separate palette per board theme.
  */
-export const ChessPiece = ({ piece, className }: ChessPieceProps) => {
-  const shapes = PIECE_SHAPES[piece.toLowerCase()];
+export const ChessPiece = ({
+  piece,
+  pieceSet = 'staunton',
+  className,
+}: ChessPieceProps) => {
+  const activeSet = PIECE_SETS[pieceSet] ?? PIECE_SETS.staunton;
+  const shapes = activeSet[piece.toLowerCase()];
   if (!shapes) return null;
 
   const isWhite = piece === piece.toUpperCase();

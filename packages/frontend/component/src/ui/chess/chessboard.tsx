@@ -9,7 +9,11 @@ import {
 } from 'react';
 
 import * as styles from './chessboard.css';
-import { ChessPiece, type PieceLetter } from './pieces';
+import {
+  ChessPiece,
+  type ChessPieceSet,
+  type PieceLetter,
+} from './pieces';
 
 export type BoardOrientation = 'white' | 'black';
 
@@ -31,6 +35,8 @@ export interface ChessboardProps {
   /** Full FEN, or just its placement field — only the placement is read. */
   fen: string;
   orientation?: BoardOrientation;
+  /** Piece set style. Defaults to 'staunton'. */
+  pieceSet?: ChessPieceSet;
   /** Enables selecting, dragging and the right-drag arrow gesture. */
   interactive?: boolean;
   /**
@@ -116,6 +122,7 @@ interface DragState {
 export const Chessboard = ({
   fen,
   orientation = 'white',
+  pieceSet = 'staunton',
   interactive = false,
   annotatable = false,
   coordinates = true,
@@ -399,7 +406,7 @@ export const Chessboard = ({
                       }
                 }
               >
-                <ChessPiece piece={letter} />
+                <ChessPiece piece={letter} pieceSet={pieceSet} />
               </div>
             );
           })}

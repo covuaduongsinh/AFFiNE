@@ -254,4 +254,22 @@ describe('Chessboard interaction', () => {
     fireEvent.pointerDown(board, { button: 0, clientX: 50, clientY: 50 });
     expect(onSelect).toHaveBeenCalledWith('h1');
   });
+
+  test('renders pieces with customizable pieceSet theme', () => {
+    const sets = [
+      'staunton',
+      'kosal',
+      'celtic',
+      'rhosgfx',
+      'firi',
+      'geometric',
+    ] as const;
+    for (const pieceSet of sets) {
+      const { container } = render(
+        <Chessboard fen={START} pieceSet={pieceSet} />
+      );
+      expect(container.querySelectorAll('[data-piece]')).toHaveLength(32);
+      expect(container.querySelectorAll('svg')).toHaveLength(32);
+    }
+  });
 });

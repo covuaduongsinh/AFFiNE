@@ -67,9 +67,13 @@ export {
   serializePgnGames,
 } from './pgn.js';
 export {
+  type ChessPieceSet,
+  PIECE_SETS,
+  PIECE_SETS_METADATA,
   PIECE_SHAPES,
   PIECE_VIEWBOX_SIZE,
   type PieceLetter,
+  type PieceSetMetadata,
 } from './piece-shapes.js';
 export {
   applyMove,

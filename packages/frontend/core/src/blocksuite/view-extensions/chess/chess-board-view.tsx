@@ -16,6 +16,7 @@ import {
 import {
   algebraicToSquare,
   applyMove,
+  type ChessPieceSet,
   findMove,
   findPieces,
   inCheck,
@@ -23,6 +24,7 @@ import {
   legalMoves,
   parseDiagramFen,
   parseFen,
+  PIECE_SETS_METADATA,
   readPlacement,
   squareToAlgebraic,
   START_FEN,
@@ -135,12 +137,28 @@ export const ChessBoardView = ({ model }: ChessBoardViewProps) => {
   } = useChessAnalysis(model.id);
 
   const [selected, setSelected] = useState<string | null>(null);
+  const [pieceSet, setPieceSet] = useState<ChessPieceSet>('staunton');
   /** `null` when the position editor is closed; the draft FEN when open. */
   const [draft, setDraft] = useState<string | null>(null);
   const [tool, setTool] = useState<SetupTool>('hand');
   /** Whether clicks and right-drags draw annotations instead of playing. */
   const [annotating, setAnnotating] = useState(false);
   const [inkColor, setInkColor] = useState<AnnotationColorKey>('y');
+
+  const cyclePieceSet = useCallback(() => {
+    const keys: ChessPieceSet[] = [
+      'staunton',
+      'kosal',
+      'celtic',
+      'rhosgfx',
+      'firi',
+      'geometric',
+    ];
+    setPieceSet(current => {
+      const idx = (keys.indexOf(current) + 1) % keys.length;
+      return keys[idx];
+    });
+  }, []);
 
   const readonly = model.store.readonly;
   /**
@@ -420,6 +438,7 @@ export const ChessBoardView = ({ model }: ChessBoardViewProps) => {
         <MemoChessboard
           fen={editing ? draftValue : fen}
           orientation={orientation}
+          pieceSet={pieceSet}
           // Annotating freezes the pieces: one click cannot both tint a square
           // and pick up whatever stands on it.
           interactive={
@@ -479,6 +498,14 @@ export const ChessBoardView = ({ model }: ChessBoardViewProps) => {
             data-testid="chess-annotate-toggle"
           >
             {annotating ? 'Chú thích: Bật' : 'Chú thích: Tắt'}
+          </button>
+          <button
+            className={gameStyles.controlButton}
+            onClick={cyclePieceSet}
+            title={`Đổi bộ quân cờ (Hiện tại: ${PIECE_SETS_METADATA[pieceSet].name})`}
+            data-testid="chess-piece-set-toggle"
+          >
+            {`Quân: ${PIECE_SETS_METADATA[pieceSet].name}`}
           </button>
           <button
             className={clsx(

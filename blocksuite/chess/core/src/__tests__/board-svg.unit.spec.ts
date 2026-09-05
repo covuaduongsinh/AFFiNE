@@ -69,4 +69,21 @@ describe('fenToSvg', () => {
     expect(labelled).toContain('>8</text>');
     expect(fenToSvg(START_FEN, { coordinates: false })).not.toContain('<text');
   });
+
+  it('renders correctly with all supported piece sets', () => {
+    const sets = [
+      'staunton',
+      'kosal',
+      'celtic',
+      'rhosgfx',
+      'firi',
+      'geometric',
+    ] as const;
+    for (const pieceSet of sets) {
+      const svg = fenToSvg(START_FEN, { pieceSet });
+      expect(count(svg, '<rect')).toBe(64);
+      expect(count(svg, '<g transform=')).toBe(32);
+      expect(svg).toContain('viewBox="0 0 8 8"');
+    }
+  });
 });

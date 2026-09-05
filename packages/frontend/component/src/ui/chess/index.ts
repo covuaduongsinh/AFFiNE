@@ -7,4 +7,9 @@ export {
   type SquareName,
 } from './chessboard';
 export { BOARD_SIZE } from './chessboard.css';
-export { ChessPiece, type ChessPieceProps, type PieceLetter } from './pieces';
+export {
+  ChessPiece,
+  type ChessPieceProps,
+  type ChessPieceSet,
+  type PieceLetter,
+} from './pieces';

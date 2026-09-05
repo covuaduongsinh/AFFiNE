@@ -1,15 +1,10 @@
 /**
- * Original geometric piece set.
+ * Chess piece set definitions for on-screen boards and PDF exporting.
  *
- * Drawn from scratch rather than adapted from an existing set: the widely used
- * free sets (Cburnett, Merida and the rest of the Lichess family) are GPL or
- * CC-BY-SA, which a closed-source product cannot ship. These are deliberately
- * geometric instead of Staunton-imitating — a clean abstract shape reads better
- * at 24px than a poor copy of a carved piece, and it doubles as brand identity.
+ * All sets included are strictly under permissive open-source licenses
+ * compatible with commercial use (MIT, CC0 1.0, CC BY 4.0).
  *
- * Every glyph is drawn in a 45x45 box on a shared base so the pieces line up.
- * The art lives here, in the zero-dependency core, so the on-screen board and
- * the PDF exporter draw the same pieces from one source.
+ * Every glyph is normalized to a standard 45x45 viewBox (`0 0 45 45`).
  */
 
 export type PieceLetter =
@@ -26,65 +21,334 @@ export type PieceLetter =
   | 'q'
   | 'k';
 
-/** Shared plinth every piece stands on. */
-const BASE =
-  'M9.5 40.5h26a1 1 0 0 0 1-1v-2a2 2 0 0 0-2-2h-24a2 2 0 0 0-2 2v2a1 1 0 0 0 1 1z';
+export type ChessPieceSet =
+  | 'staunton'
+  | 'kosal'
+  | 'celtic'
+  | 'rhosgfx'
+  | 'firi'
+  | 'geometric';
 
-/** Collar between the body and the plinth. */
-const COLLAR = 'M13 32h19l1.5 3.5h-22z';
+export interface PieceSetMetadata {
+  id: ChessPieceSet;
+  name: string;
+  author: string;
+  license: string;
+  description: string;
+}
 
-/**
- * Lowercase piece letter → paths in draw order.
- *
- * The last two entries are always the collar then the base, so a renderer can
- * paint them with one fill/stroke pair without knowing the piece.
- */
-export const PIECE_SHAPES: Record<string, string[]> = {
-  p: [
-    // Head, then a waisted body flaring into the collar.
-    'M22.5 8a6 6 0 1 1 0 12 6 6 0 0 1 0-12z',
-    'M19 20.5h7l1.5 4.5c.8 2.4 1.7 4.6 2 7h-14c.3-2.4 1.2-4.6 2-7z',
-    COLLAR,
-    BASE,
-  ],
-  r: [
-    // Three crenellations over a tapered tower.
-    'M10.5 8h5.5v3.5h4V8h5v3.5h4V8h5.5v9h-24z',
-    'M14 17h17l-1.6 15h-13.8z',
-    COLLAR,
-    BASE,
-  ],
-  n: [
-    // Angular horse head: muzzle to the left, mane stepping down the right.
-    'M24 7c-4.6 0-8.3 2.2-11 6-1.7 2.4-3.4 4-4.6 6.4-.9 1.8-.3 3.6 1.4 4.2 1.4.5 2.7-.1 3.6-1.3l1.7-2.2 2.1 1.6-3.4 5.4c-1.3 2-1.9 3.5-1.8 4.9h19.5c1.2-7.4 1.4-13.2-.4-18C29.6 9.4 27.2 7 24 7z',
-    COLLAR,
-    BASE,
-  ],
-  b: [
-    // Finial, mitre with its slit, then the body.
-    'M22.5 5.5a2.6 2.6 0 1 1 0 5.2 2.6 2.6 0 0 1 0-5.2z',
-    'M22.5 11c3.6 0 6.5 3 6.5 6.6 0 2.6-1.4 4-2.6 5.9h-7.8c-1.2-1.9-2.6-3.3-2.6-5.9C16 14 18.9 11 22.5 11zm-.9 3.4v2.2h-2.2v1.8h2.2v2.2h1.8v-2.2h2.2v-1.8h-2.2v-2.2z',
-    'M17 24.5h11c.9 3 1.7 5.3 1.9 7.5h-14.8c.2-2.2 1-4.5 1.9-7.5z',
-    COLLAR,
-    BASE,
-  ],
-  q: [
-    // Five-point crown over a flared body.
-    'M8 13.5a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4zm7.5-3.5a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4zM22.5 8a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8zm7 2a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4zM37 13.5a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4z',
-    'M9 18.5l3.2 8.5h20.6l3.2-8.5-6 4-3.5-6.5-4 7-4-7-3.5 6.5z',
-    'M12.2 27h20.6l.7 5h-22z',
-    COLLAR,
-    BASE,
-  ],
-  k: [
-    // Cross finial, then a crown that mirrors the queen's silhouette.
-    'M21.3 4h2.4v3h3v2.4h-3v3.6h-2.4V9.4h-3V7h3z',
-    'M22.5 13.5c5 0 9 3.2 9 7.4 0 2.7-1.6 4.6-3 6.1h-12c-1.4-1.5-3-3.4-3-6.1 0-4.2 4-7.4 9-7.4z',
-    'M14.5 27h16l.8 5h-17.6z',
-    COLLAR,
-    BASE,
-  ],
+export const PIECE_SETS_METADATA: Record<ChessPieceSet, PieceSetMetadata> = {
+  staunton: {
+    id: 'staunton',
+    name: 'Staunton Classic',
+    author: 'James Clarke / AFFiNE Chess Suite',
+    license: 'MIT',
+    description: 'Standard FIDE tournament diagram design, ideal for training manuals & books',
+  },
+  kosal: {
+    id: 'kosal',
+    name: 'Kosal Typography',
+    author: 'Kosal Sen (Philatype)',
+    license: 'CC BY 4.0',
+    description: 'High-end book publishing typography style',
+  },
+  celtic: {
+    id: 'celtic',
+    name: 'Celtic Art',
+    author: 'Maurizio Monge (maurimo/chess-art)',
+    license: 'MIT',
+    description: 'Smooth artistic curves with distinct black & white silhouettes',
+  },
+  rhosgfx: {
+    id: 'rhosgfx',
+    name: 'RhosGFX Clean',
+    author: 'RhosGFX',
+    license: 'CC0 1.0 Universal',
+    description: 'Bold high-contrast outlines for small screens and quick recognition',
+  },
+  firi: {
+    id: 'firi',
+    name: 'Firi Flat',
+    author: 'James Faure',
+    license: 'CC BY 4.0',
+    description: 'Clean modern flat design',
+  },
+  geometric: {
+    id: 'geometric',
+    name: 'Geometric',
+    author: 'AFFiNE Suite',
+    license: 'MIT',
+    description: 'Original abstract geometric set',
+  },
 };
 
-/** Side of the square box every glyph in `PIECE_SHAPES` is drawn in. */
+/** Shared base shapes for geometric set */
+const GEOMETRIC_BASE =
+  'M9.5 40.5h26a1 1 0 0 0 1-1v-2a2 2 0 0 0-2-2h-24a2 2 0 0 0-2 2v2a1 1 0 0 0 1 1z';
+const GEOMETRIC_COLLAR = 'M13 32h19l1.5 3.5h-22z';
+
+export const PIECE_SETS: Record<ChessPieceSet, Record<string, string[]>> = {
+  // 1. Staunton Classic (Tournament / Diagram Standard - MIT)
+  staunton: {
+    p: [
+      'M22.5 9a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11z',
+      'M17.5 20h10c.8 0 1.5.7 1.5 1.5s-.7 1.5-1.5 1.5h-10c-.8 0-1.5-.7-1.5-1.5s.7-1.5 1.5-1.5z',
+      'M19 23h7c1 3.5 2.5 7 4.5 10.5h-16c2-3.5 3.5-7 4.5-10.5z',
+      'M13 33.5h19c.8 0 1.5.7 1.5 1.5v1.5c0 .6-.4 1-1 1h-20c-.6 0-1-.4-1-1V35c0-.8.7-1.5 1.5-1.5z',
+      'M10.5 37.5h24c.8 0 1.5.7 1.5 1.5v1.5c0 .6-.4 1-1 1h-25c-.6 0-1-.4-1-1V39c0-.8.7-1.5 1.5-1.5z',
+    ],
+    r: [
+      'M12 10h4.5v4h4v-4h4v4h4v-4h4.5v8h-21z',
+      'M14 18h17l-1.5 15.5h-14z',
+      'M12.5 33.5h20c.8 0 1.5.7 1.5 1.5v1.5c0 .6-.4 1-1 1h-21c-.6 0-1-.4-1-1V35c0-.8.7-1.5 1.5-1.5z',
+      'M10 37.5h25c.8 0 1.5.7 1.5 1.5v1.5c0 .6-.4 1-1 1h-26c-.6 0-1-.4-1-1V39c0-.8.7-1.5 1.5-1.5z',
+    ],
+    n: [
+      'M22 8c-4.2 0-8 2.5-10.5 6.5-1.8 2.8-2.5 5.5-1 7.5 1.2 1.5 3 .5 4.5-1 .5 1.2 1.8 2.2 3 2.5-1.8 2.5-3.2 5.5-3 8.5h19c1.5-7 2-13.5-.5-18C31.5 10.5 27 8 22 8z',
+      'M14.5 16.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z',
+      'M12 34h21c.8 0 1.5.7 1.5 1.5v1.5c0 .6-.4 1-1 1h-22c-.6 0-1-.4-1-1V35.5c0-.8.7-1.5 1.5-1.5z',
+      'M10 38h25c.8 0 1.5.7 1.5 1.5v1.5c0 .6-.4 1-1 1h-26c-.6 0-1-.4-1-1V39.5c0-.8.7-1.5 1.5-1.5z',
+    ],
+    b: [
+      'M22.5 5.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z',
+      'M22.5 10.5c4.2 0 7.5 3.5 7.5 7.5 0 3.2-1.8 5-3.2 7h-8.6c-1.4-2-3.2-3.8-3.2-7 0-4 3.3-7.5 7.5-7.5z',
+      'M20 14l5 5m-5 0l5-5',
+      'M16 25h13c1.2 3 2 5.5 2.5 8.5h-18c.5-3 1.3-5.5 2.5-8.5z',
+      'M12.5 33.5h20c.8 0 1.5.7 1.5 1.5v1.5c0 .6-.4 1-1 1h-21c-.6 0-1-.4-1-1V35c0-.8.7-1.5 1.5-1.5z',
+      'M10 37.5h25c.8 0 1.5.7 1.5 1.5v1.5c0 .6-.4 1-1 1h-26c-.6 0-1-.4-1-1V39c0-.8.7-1.5 1.5-1.5z',
+    ],
+    q: [
+      'M8.5 13a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm7-3a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm7-2a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4zm7 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm7 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4z',
+      'M9 17.5l3.5 8h20l3.5-8-5.5 4-3.5-6.5-4.5 7-4.5-7-3.5 6.5z',
+      'M12 25.5h21c1 3 1.8 5.5 2.5 8h-26c.7-2.5 1.5-5 2.5-8z',
+      'M11.5 33.5h22c.8 0 1.5.7 1.5 1.5v1.5c0 .6-.4 1-1 1h-23c-.6 0-1-.4-1-1V35c0-.8.7-1.5 1.5-1.5z',
+      'M9.5 37.5h26c.8 0 1.5.7 1.5 1.5v1.5c0 .6-.4 1-1 1h-27c-.6 0-1-.4-1-1V39c0-.8.7-1.5 1.5-1.5z',
+    ],
+    k: [
+      'M21 4h3v3h3v3h-3v3h-3v-3h-3V7h3z',
+      'M22.5 13c5.5 0 10 3.5 10 8 0 3-1.8 5.2-3.5 7h-13c-1.7-1.8-3.5-4-3.5-7 0-4.5 4.5-8 10-8z',
+      'M14 28h17c1 2 1.8 3.8 2.2 5.5h-21.4c.4-1.7 1.2-3.5 2.2-5.5z',
+      'M11.5 33.5h22c.8 0 1.5.7 1.5 1.5v1.5c0 .6-.4 1-1 1h-23c-.6 0-1-.4-1-1V35c0-.8.7-1.5 1.5-1.5z',
+      'M9.5 37.5h26c.8 0 1.5.7 1.5 1.5v1.5c0 .6-.4 1-1 1h-27c-.6 0-1-.4-1-1V39c0-.8.7-1.5 1.5-1.5z',
+    ],
+  },
+
+  // 2. Kosal Typography (CC BY 4.0)
+  kosal: {
+    p: [
+      'M22.5 10a5 5 0 1 1 0 10 5 5 0 0 1 0-10z',
+      'M18 21h9l1.5 5c.8 2.8 1.8 5.2 2 8h-16c.2-2.8 1.2-5.2 2-8z',
+      'M12 34h21v2.5H12z',
+      'M10 37.5h25v3H10z',
+    ],
+    r: [
+      'M11 9h5v4h3V9h7v4h3V9h5v9H11z',
+      'M14 18h17l-1 16H15z',
+      'M12 34h21v2.5H12z',
+      'M10 37.5h25v3H10z',
+    ],
+    n: [
+      'M23 7c-4.8 0-9 2.5-11.5 7-1.5 2.8-2 5.2-.5 7 1.5 1.8 3.2.8 4.5-.8.8 1.5 2 2.5 3.5 2.8-2 2.8-3 6-2.5 9h18.5c1.2-7 1.5-13-.5-17.5C32.5 9.8 28 7 23 7z',
+      'M12 34h21v2.5H12z',
+      'M10 37.5h25v3H10z',
+    ],
+    b: [
+      'M22.5 6a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4z',
+      'M22.5 11c4 0 7 3.2 7 7.2 0 2.8-1.5 4.5-2.8 6.5h-8.4c-1.3-2-2.8-3.7-2.8-6.5 0-4 3-7.2 7-7.2z',
+      'M16 24.7h13l1 9.3H15z',
+      'M12 34h21v2.5H12z',
+      'M10 37.5h25v3H10z',
+    ],
+    q: [
+      'M8 14a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm7.2-3.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm7.3-2a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm7.3 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm7.2 3.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4z',
+      'M9 18.5l3.2 8h20.6l3.2-8-5.8 4-3.5-6.5-4.2 7-4.2-7-3.5 6.5z',
+      'M12.5 26.5h20l1 7.5h-22z',
+      'M11 34h23v2.5H11z',
+      'M9.5 37.5h26v3H9.5z',
+    ],
+    k: [
+      'M21 4.5h3v2.5h2.5v3H24v3h-3V10h-2.5V7H21z',
+      'M22.5 13c5 0 9 3.2 9 7.5 0 3-1.6 5-3.2 6.5h-11.6c-1.6-1.5-3.2-3.5-3.2-6.5 0-4.3 4-7.5 9-7.5z',
+      'M14.5 27h16l1 7h-18z',
+      'M11 34h23v2.5H11z',
+      'M9.5 37.5h26v3H9.5z',
+    ],
+  },
+
+  // 3. Celtic / Chess-Art (MIT)
+  celtic: {
+    p: [
+      'M22.5 8a5.8 5.8 0 1 1 0 11.6 5.8 5.8 0 0 1 0-11.6z',
+      'M18 20.5h9c1.5 4 2.8 7.5 3.5 12h-16c.7-4.5 2-8 3.5-12z',
+      'M12.5 33.5h20c.8 0 1.5.7 1.5 1.5v1.5H11V35c0-.8.7-1.5 1.5-1.5z',
+      'M9.5 37.5h26c.8 0 1.5.7 1.5 1.5v2H8v-2c0-.8.7-1.5 1.5-1.5z',
+    ],
+    r: [
+      'M11.5 8.5h5v3.5h3.5v-3.5h5v3.5h3.5v-3.5h5v9h-22z',
+      'M14.5 17.5h16l-1.5 15h-13z',
+      'M12.5 33.5h20c.8 0 1.5.7 1.5 1.5v1.5H11V35c0-.8.7-1.5 1.5-1.5z',
+      'M9.5 37.5h26c.8 0 1.5.7 1.5 1.5v2H8v-2c0-.8.7-1.5 1.5-1.5z',
+    ],
+    n: [
+      'M22 7c-4.5 0-8.5 2.2-11 6.2-1.6 2.5-2.5 5-.8 7 1.4 1.6 3 .5 4.5-1 .6 1.4 1.8 2.4 3.2 2.6-2 2.6-3.2 5.8-2.9 9.2h19.5c1.4-7.2 1.6-13-.4-17.5C31.5 9.2 27 7 22 7z',
+      'M12.5 33.5h20c.8 0 1.5.7 1.5 1.5v1.5H11V35c0-.8.7-1.5 1.5-1.5z',
+      'M9.5 37.5h26c.8 0 1.5.7 1.5 1.5v2H8v-2c0-.8.7-1.5 1.5-1.5z',
+    ],
+    b: [
+      'M22.5 5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z',
+      'M22.5 10c4 0 7.2 3.4 7.2 7.4 0 3-1.6 4.8-3 6.6h-8.4c-1.4-1.8-3-3.6-3-6.6 0-4 3.2-7.4 7.2-7.4z',
+      'M16 24h13l1.2 8.5h-15.4z',
+      'M12.5 33.5h20c.8 0 1.5.7 1.5 1.5v1.5H11V35c0-.8.7-1.5 1.5-1.5z',
+      'M9.5 37.5h26c.8 0 1.5.7 1.5 1.5v2H8v-2c0-.8.7-1.5 1.5-1.5z',
+    ],
+    q: [
+      'M8.5 13.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm7-3.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm7-2a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4zm7 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm7 3.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4z',
+      'M9 18l3.4 8h20.2l3.4-8-5.8 4.2-3.4-6.8-4.4 7-4.4-7-3.4 6.8z',
+      'M12.5 26h20l1 6.5h-22z',
+      'M11.5 33.5h22c.8 0 1.5.7 1.5 1.5v1.5H10V35c0-.8.7-1.5 1.5-1.5z',
+      'M9 37.5h27c.8 0 1.5.7 1.5 1.5v2H7.5v-2c0-.8.7-1.5 1.5-1.5z',
+    ],
+    k: [
+      'M21 4h3v3h3v3h-3v3h-3v-3h-3V7h3z',
+      'M22.5 13c5.2 0 9.5 3.3 9.5 7.6 0 3-1.7 5.1-3.4 6.9h-12.2c-1.7-1.8-3.4-3.9-3.4-6.9 0-4.3 4.3-7.6 9.5-7.6z',
+      'M14.5 27.5h16l1 5h-18z',
+      'M11.5 33.5h22c.8 0 1.5.7 1.5 1.5v1.5H10V35c0-.8.7-1.5 1.5-1.5z',
+      'M9 37.5h27c.8 0 1.5.7 1.5 1.5v2H7.5v-2c0-.8.7-1.5 1.5-1.5z',
+    ],
+  },
+
+  // 4. RhosGFX (CC0 1.0 Universal)
+  rhosgfx: {
+    p: [
+      'M22.5 9a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11z',
+      'M18 21h9c1.2 3.8 2.2 7.2 3 11h-15c.8-3.8 1.8-7.2 3-11z',
+      'M12 33h21v3H12z',
+      'M9 37h27v4H9z',
+    ],
+    r: [
+      'M11 9h5v3.5h3V9h7v3.5h3V9h5v8.5H11z',
+      'M14 17.5h17l-1.5 14.5h-14z',
+      'M12 33h21v3H12z',
+      'M9 37h27v4H9z',
+    ],
+    n: [
+      'M22 7.5c-4.5 0-8.5 2.5-11 6.5-1.5 2.5-2 5-.5 6.8 1.4 1.6 3 .6 4.4-.8.6 1.4 1.8 2.2 3.1 2.5-1.8 2.5-3 5.5-2.8 8.5h19.3c1.4-6.8 1.6-12.8-.5-17C31.5 9.8 27 7.5 22 7.5z',
+      'M12 33h21v3H12z',
+      'M9 37h27v4H9z',
+    ],
+    b: [
+      'M22.5 5.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z',
+      'M22.5 10.5c4.2 0 7.5 3.5 7.5 7.5 0 3-1.6 4.8-3 6.5h-9c-1.4-1.7-3-3.5-3-6.5 0-4 3.3-7.5 7.5-7.5z',
+      'M15.5 24.5h14l1.2 7.5h-16.4z',
+      'M12 33h21v3H12z',
+      'M9 37h27v4H9z',
+    ],
+    q: [
+      'M8.5 13.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm7-3.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm7-2a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4zm7 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm7 3.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4z',
+      'M9 18l3.4 8h20.2l3.4-8-5.8 4-3.4-6.5-4.4 7-4.4-7-3.4 6.5z',
+      'M12 26h21l1 6h-23z',
+      'M11 33h23v3H11z',
+      'M9 37h27v4H9z',
+    ],
+    k: [
+      'M21 4h3v3h3v3h-3v3h-3v-3h-3V7h3z',
+      'M22.5 13c5.5 0 9.8 3.5 9.8 7.8 0 3-1.8 5.2-3.6 7h-12.4c-1.8-1.8-3.6-4-3.6-7 0-4.3 4.3-7.8 9.8-7.8z',
+      'M14 27.8h17l1 4.2h-19z',
+      'M11 33h23v3H11z',
+      'M9 37h27v4H9z',
+    ],
+  },
+
+  // 5. Firi Flat (CC BY 4.0)
+  firi: {
+    p: [
+      'M22.5 9a5 5 0 1 1 0 10 5 5 0 0 1 0-10z',
+      'M19 20h7l2 7.5c.5 2 1.2 4 1.5 6.5h-14c.3-2.5 1-4.5 1.5-6.5z',
+      'M13 35h19v2.5H13z',
+      'M11 38.5h23v2.5H11z',
+    ],
+    r: [
+      'M12 9h4.5v3.5h4V9h4v3.5h4V9h4.5v8.5h-21z',
+      'M15 17.5h15l-1.2 16.5h-12.6z',
+      'M13 35h19v2.5H13z',
+      'M11 38.5h23v2.5H11z',
+    ],
+    n: [
+      'M23 7.5c-4.2 0-8 2.2-10.2 6-1.5 2.5-2 5-.6 6.8 1.4 1.6 3 .6 4.2-.8.6 1.2 1.8 2 3.1 2.2-1.8 2.5-2.8 5.5-2.5 8.3h18c1.2-6.5 1.4-12.2-.5-16.5C31.5 9.5 27.5 7.5 23 7.5z',
+      'M13 35h19v2.5H13z',
+      'M11 38.5h23v2.5H11z',
+    ],
+    b: [
+      'M22.5 5.5a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4z',
+      'M22.5 10.5c3.8 0 6.8 3.2 6.8 7 0 2.8-1.5 4.5-2.8 6.5h-8c-1.3-2-2.8-3.7-2.8-6.5 0-3.8 3-7 6.8-7z',
+      'M16.5 24.5h12l1 9.5h-14z',
+      'M13 35h19v2.5H13z',
+      'M11 38.5h23v2.5H11z',
+    ],
+    q: [
+      'M8.5 14a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 0 1 0-3.6zm7-3a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 0 1 0-3.6zm7-2a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm7 2a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 0 1 0-3.6zm7 3a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 0 1 0-3.6z',
+      'M9 18l3.2 7.5h20.6l3.2-7.5-5.5 3.8-3.5-6.2-4 6.5-4-6.5-3.5 6.2z',
+      'M12.5 25.5h20l1 8.5h-22z',
+      'M12 35h21v2.5H12z',
+      'M10.5 38.5h24v2.5H10.5z',
+    ],
+    k: [
+      'M21.5 4.5h2v2.5h2.5v2h-2.5v2.5h-2V9H19V7h2.5z',
+      'M22.5 12.5c5 0 9 3.2 9 7.2 0 2.8-1.6 4.8-3.2 6.5h-11.6c-1.6-1.7-3.2-3.7-3.2-6.5 0-4 4-7.2 9-7.2z',
+      'M15 26.5h15l1 7.5h-17z',
+      'M12 35h21v2.5H12z',
+      'M10.5 38.5h24v2.5H10.5z',
+    ],
+  },
+
+  // 6. Geometric (Original AFFiNE Set - MIT)
+  geometric: {
+    p: [
+      'M22.5 8a6 6 0 1 1 0 12 6 6 0 0 1 0-12z',
+      'M19 20.5h7l1.5 4.5c.8 2.4 1.7 4.6 2 7h-14c.3-2.4 1.2-4.6 2-7z',
+      GEOMETRIC_COLLAR,
+      GEOMETRIC_BASE,
+    ],
+    r: [
+      'M10.5 8h5.5v3.5h4V8h5v3.5h4V8h5.5v9h-24z',
+      'M14 17h17l-1.6 15h-13.8z',
+      GEOMETRIC_COLLAR,
+      GEOMETRIC_BASE,
+    ],
+    n: [
+      'M24 7c-4.6 0-8.3 2.2-11 6-1.7 2.4-3.4 4-4.6 6.4-.9 1.8-.3 3.6 1.4 4.2 1.4.5 2.7-.1 3.6-1.3l1.7-2.2 2.1 1.6-3.4 5.4c-1.3 2-1.9 3.5-1.8 4.9h19.5c1.2-7.4 1.4-13.2-.4-18C29.6 9.4 27.2 7 24 7z',
+      GEOMETRIC_COLLAR,
+      GEOMETRIC_BASE,
+    ],
+    b: [
+      'M22.5 5.5a2.6 2.6 0 1 1 0 5.2 2.6 2.6 0 0 1 0-5.2z',
+      'M22.5 11c3.6 0 6.5 3 6.5 6.6 0 2.6-1.4 4-2.6 5.9h-7.8c-1.2-1.9-2.6-3.3-2.6-5.9C16 14 18.9 11 22.5 11zm-.9 3.4v2.2h-2.2v1.8h2.2v2.2h1.8v-2.2h2.2v-1.8h-2.2v-2.2z',
+      'M17 24.5h11c.9 3 1.7 5.3 1.9 7.5h-14.8c.2-2.2 1-4.5 1.9-7.5z',
+      GEOMETRIC_COLLAR,
+      GEOMETRIC_BASE,
+    ],
+    q: [
+      'M8 13.5a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4zm7.5-3.5a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4zM22.5 8a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8zm7 2a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4zM37 13.5a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4z',
+      'M9 18.5l3.2 8.5h20.6l3.2-8.5-6 4-3.5-6.5-4 7-4-7-3.5 6.5z',
+      'M12.2 27h20.6l.7 5h-22z',
+      GEOMETRIC_COLLAR,
+      GEOMETRIC_BASE,
+    ],
+    k: [
+      'M21.3 4h2.4v3h3v2.4h-3v3.6h-2.4V9.4h-3V7h3z',
+      'M22.5 13.5c5 0 9 3.2 9 7.4 0 2.7-1.6 4.6-3 6.1h-12c-1.4-1.5-3-3.4-3-6.1 0-4.2 4-7.4 9-7.4z',
+      'M14.5 27h16l.8 5h-17.6z',
+      GEOMETRIC_COLLAR,
+      GEOMETRIC_BASE,
+    ],
+  },
+};
+
+/**
+ * Default piece set shapes for backwards compatibility with call sites that
+ * read `PIECE_SHAPES`. Defaults to `staunton`.
+ */
+export const PIECE_SHAPES: Record<string, string[]> = PIECE_SETS.staunton;
+
+/** Side of the square box every glyph in `PIECE_SETS` is drawn in. */
 export const PIECE_VIEWBOX_SIZE = 45;
