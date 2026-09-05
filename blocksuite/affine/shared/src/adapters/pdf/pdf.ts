@@ -1008,7 +1008,7 @@ export class PdfAdapter extends BaseAdapter<PdfAdapterFile> {
         },
       },
       defaultStyle: {
-        font: 'SarasaGothicCL',
+        font: 'Inter',
         fontSize: 12,
         lineHeight: 1.5,
       },
@@ -1020,8 +1020,8 @@ export class PdfAdapter extends BaseAdapter<PdfAdapterFile> {
   ): Promise<Blob> {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
-        reject(new Error('PDF generation timed out after 30 seconds'));
-      }, 30_000);
+        reject(new Error('PDF generation timed out after 120 seconds'));
+      }, 120_000);
       try {
         const pdfDocGenerator = pdfMake.createPdf(docDefinition);
         pdfDocGenerator.getBlob(blob => {
