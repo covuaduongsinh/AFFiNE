@@ -120,6 +120,7 @@ export async function openDatabase(
   const pgDir = join(dataDir, 'pg');
   await mkdir(dataDir, { recursive: true });
   await mkdir(join(dataDir, 'blobs'), { recursive: true });
+  await mkdir(join(dataDir, 'markdown'), { recursive: true });
   await mkdir(pgDir, { recursive: true });
   let pg: PGlite;
   try {

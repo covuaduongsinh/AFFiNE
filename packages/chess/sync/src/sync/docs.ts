@@ -2,6 +2,10 @@ import { and, eq, gt } from 'drizzle-orm';
 import * as Y from 'yjs';
 
 import { docSnapshots, docUpdates } from '../db/schema.js';
+import {
+  removeDocMarkdownFile,
+  scheduleDocMarkdownExport,
+} from '../markdown/export.js';
 import type { AppState } from '../types.js';
 
 type CachedDoc = {
@@ -114,6 +118,7 @@ export async function pushUpdate(
     await compactDoc(state, workspaceId, docId, doc, timestamp);
   }
   releaseDoc(workspaceId, docId);
+  scheduleDocMarkdownExport(state, workspaceId, docId);
   return timestamp;
 }
 
@@ -204,6 +209,7 @@ export async function deleteDoc(
     cached.doc.destroy();
     cache.delete(key);
   }
+  void removeDocMarkdownFile(state, workspaceId, docId).catch(() => {});
 }
 
 export function releaseDoc(workspaceId: string, docId: string) {

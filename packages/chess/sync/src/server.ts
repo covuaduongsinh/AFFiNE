@@ -11,6 +11,7 @@ import { openDatabase } from './db/client.js';
 import { errorBody, HttpError } from './errors.js';
 import { createResolvers } from './graphql/resolvers.js';
 import { typeDefs } from './graphql/schema.js';
+import { exportAllDocsToMarkdown } from './markdown/export.js';
 import { attachSocket } from './sync/socket.js';
 import type { AppState, GqlContext } from './types.js';
 
@@ -181,6 +182,10 @@ export async function startChessSync(
   state.baseUrl =
     config.publicOrigin ||
     `http://${config.host === '0.0.0.0' ? '127.0.0.1' : config.host}:${port}`;
+
+  void exportAllDocsToMarkdown(state).catch(err => {
+    app.log.error(err);
+  });
 
   return {
     baseUrl: state.baseUrl,
