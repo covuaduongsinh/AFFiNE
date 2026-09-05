@@ -430,26 +430,69 @@ export async function importMarkdownFile(
     // Update title in workspace root doc if changed
     const rootDoc = await loadYDoc(state, workspaceId, workspaceId);
     const metaMap = rootDoc.getMap('meta');
-    const pages = metaMap.get('pages') as
-      | Y.Array<Record<string, unknown>>
-      | undefined;
-    if (pages && typeof pages.forEach === 'function') {
-      pages.forEach((p, idx) => {
-        if (p && p.id === targetDocId && p.title !== title) {
-          const updated = { ...p, title, updatedDate: now };
-          pages.delete(idx, 1);
-          pages.insert(idx, [updated]);
-        }
-      });
-      const rootUpdate = Y.encodeStateAsUpdate(rootDoc);
-      await pushUpdate(
-        state,
-        workspaceId,
-        workspaceId,
-        rootUpdate,
-        'system:import'
-      );
+    let pages = metaMap.get('pages') as Y.Array<unknown> | undefined;
+    if (!pages) {
+      pages = new Y.Array();
+      metaMap.set('pages', pages);
     }
+
+    // Convert any legacy non-Y.Map items in pages to Y.Map
+    const entriesToReplace: { index: number; entry: Y.Map<unknown> }[] = [];
+    let targetPageFound = false;
+
+    pages.forEach((p, idx) => {
+      if (p instanceof Y.Map) {
+        if (p.get('id') === targetDocId) {
+          targetPageFound = true;
+          if (p.get('title') !== title) {
+            p.set('title', title);
+            p.set('updatedDate', now);
+          }
+        }
+      } else if (p && typeof p === 'object') {
+        const raw = p as Record<string, unknown>;
+        const pId = String(raw.id || '');
+        if (pId === targetDocId) targetPageFound = true;
+        const ymap = new Y.Map([
+          ['id', pId],
+          ['title', pId === targetDocId ? title : String(raw.title || '')],
+          ['createDate', Number(raw.createDate || now)],
+          ['tags', new Y.Array()],
+        ]);
+        if (raw.updatedDate) ymap.set('updatedDate', Number(raw.updatedDate));
+        entriesToReplace.push({ index: idx, entry: ymap });
+      }
+    });
+
+    for (let i = entriesToReplace.length - 1; i >= 0; i--) {
+      const item = entriesToReplace[i];
+      pages.delete(item.index, 1);
+      pages.insert(item.index, [item.entry]);
+    }
+
+    if (!targetPageFound) {
+      const pageMapEntry = new Y.Map([
+        ['id', targetDocId],
+        ['title', title],
+        ['createDate', now],
+        ['tags', new Y.Array()],
+      ]);
+      pages.push([pageMapEntry]);
+    }
+
+    const spacesMap = rootDoc.getMap('spaces');
+    if (!spacesMap.has(targetDocId)) {
+      spacesMap.set(targetDocId, new Y.Map());
+    }
+
+    const rootUpdate = Y.encodeStateAsUpdate(rootDoc);
+    await pushUpdate(
+      state,
+      workspaceId,
+      workspaceId,
+      rootUpdate,
+      'system:import'
+    );
     releaseDoc(workspaceId, workspaceId);
 
     docMap[targetDocId] = { fileName, hash, updatedAt: now };
@@ -466,22 +509,41 @@ export async function importMarkdownFile(
     // Register in workspace root doc
     const rootDoc = await loadYDoc(state, workspaceId, workspaceId);
     const metaMap = rootDoc.getMap('meta');
-    let pages = metaMap.get('pages') as
-      | Y.Array<Record<string, unknown>>
-      | undefined;
+    let pages = metaMap.get('pages') as Y.Array<unknown> | undefined;
     if (!pages) {
       pages = new Y.Array();
       metaMap.set('pages', pages);
     }
-    pages.push([
-      {
-        id: newDocId,
-        title,
-        createDate: now,
-        updatedDate: now,
-        tags: [],
-      },
+
+    // Convert any legacy non-Y.Map items in pages to Y.Map
+    const entriesToReplace: { index: number; entry: Y.Map<unknown> }[] = [];
+    pages.forEach((p, idx) => {
+      if (!(p instanceof Y.Map) && p && typeof p === 'object') {
+        const raw = p as Record<string, unknown>;
+        const ymap = new Y.Map([
+          ['id', String(raw.id || '')],
+          ['title', String(raw.title || '')],
+          ['createDate', Number(raw.createDate || now)],
+          ['tags', new Y.Array()],
+        ]);
+        if (raw.updatedDate) ymap.set('updatedDate', Number(raw.updatedDate));
+        entriesToReplace.push({ index: idx, entry: ymap });
+      }
+    });
+
+    for (let i = entriesToReplace.length - 1; i >= 0; i--) {
+      const item = entriesToReplace[i];
+      pages.delete(item.index, 1);
+      pages.insert(item.index, [item.entry]);
+    }
+
+    const pageMapEntry = new Y.Map([
+      ['id', newDocId],
+      ['title', title],
+      ['createDate', now],
+      ['tags', new Y.Array()],
     ]);
+    pages.push([pageMapEntry]);
 
     const spacesMap = rootDoc.getMap('spaces');
     if (!spacesMap.has(newDocId)) {
