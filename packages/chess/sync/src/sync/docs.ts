@@ -1,4 +1,4 @@
-import { and, eq, gt } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import * as Y from 'yjs';
 
 import { docSnapshots, docUpdates } from '../db/schema.js';
@@ -121,16 +121,24 @@ export async function pushUpdate(
   scheduleDocMarkdownExport(state, workspaceId, docId);
 
   if (state.io) {
-    state.io
-      .to(`space:workspace:${workspaceId}`)
-      .emit('space:broadcast-doc-updates', {
-        spaceType: 'workspace',
-        spaceId: workspaceId,
-        docId,
-        updates: [bytesToBase64(update)],
-        timestamp,
-        editor,
-      });
+    const room = `space:workspace:${workspaceId}`;
+    const base64Update = bytesToBase64(update);
+    state.io.to(room).emit('space:broadcast-doc-updates', {
+      spaceType: 'workspace',
+      spaceId: workspaceId,
+      docId,
+      updates: [base64Update],
+      timestamp,
+      editor,
+    });
+    state.io.to(room).emit('space:broadcast-doc-update', {
+      spaceType: 'workspace',
+      spaceId: workspaceId,
+      docId,
+      update: base64Update,
+      timestamp,
+      editor,
+    });
   }
 
   return timestamp;
@@ -170,7 +178,7 @@ export async function compactDoc(
 export async function lastTimestamps(
   state: AppState,
   workspaceId: string,
-  after?: number
+  _after?: number
 ) {
   const snaps = await state.db.db
     .select()
@@ -179,19 +187,10 @@ export async function lastTimestamps(
   const updates = await state.db.db
     .select()
     .from(docUpdates)
-    .where(
-      after === undefined
-        ? eq(docUpdates.workspaceId, workspaceId)
-        : and(
-            eq(docUpdates.workspaceId, workspaceId),
-            gt(docUpdates.timestamp, after)
-          )
-    );
+    .where(eq(docUpdates.workspaceId, workspaceId));
   const map: Record<string, number> = {};
   for (const row of snaps) {
-    if (after === undefined || row.timestamp > after) {
-      map[row.docId] = row.timestamp;
-    }
+    map[row.docId] = Math.max(map[row.docId] ?? 0, row.timestamp);
   }
   for (const row of updates) {
     map[row.docId] = Math.max(map[row.docId] ?? 0, row.timestamp);

@@ -61,9 +61,16 @@ export async function startChessSync(
 
   app.get('/health', async () => ({ ok: true, version: '0.27.0' }));
 
-  app.post('/api/sync/import-markdown', async (_req, reply) => {
+  app.post('/api/sync/import-markdown', async (req, reply) => {
     try {
-      const count = await scanAndImportAllMarkdown(state);
+      const query = req.query as Record<string, unknown> | undefined;
+      const body = req.body as Record<string, unknown> | undefined;
+      const force =
+        query?.force === 'true' ||
+        query?.force === true ||
+        body?.force === true ||
+        body?.force === 'true';
+      const count = await scanAndImportAllMarkdown(state, force);
       return await reply.send({ success: true, count });
     } catch (err) {
       app.log.error(err);

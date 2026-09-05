@@ -405,16 +405,23 @@ export function attachSocket(app: FastifyInstance, state: AppState) {
           user.id
         );
         ackData(ack, { timestamp });
-        socket
-          .to(spaceRoom(payload.spaceType, payload.spaceId))
-          .emit('space:broadcast-doc-updates', {
-            spaceType: payload.spaceType,
-            spaceId: payload.spaceId,
-            docId: payload.docId,
-            updates: [payload.update],
-            timestamp,
-            editor: user.id,
-          });
+        const room = spaceRoom(payload.spaceType, payload.spaceId);
+        socket.to(room).emit('space:broadcast-doc-updates', {
+          spaceType: payload.spaceType,
+          spaceId: payload.spaceId,
+          docId: payload.docId,
+          updates: [payload.update],
+          timestamp,
+          editor: user.id,
+        });
+        socket.to(room).emit('space:broadcast-doc-update', {
+          spaceType: payload.spaceType,
+          spaceId: payload.spaceId,
+          docId: payload.docId,
+          update: payload.update,
+          timestamp,
+          editor: user.id,
+        });
       } catch (error) {
         ackError(
           ack,

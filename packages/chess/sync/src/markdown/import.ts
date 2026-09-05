@@ -65,6 +65,149 @@ export function parseInlineFormatting(text: string, yText: Y.Text): void {
   }
 }
 
+export interface ParsedChessBoard {
+  fen: string;
+  orientation: 'white' | 'black';
+  arrows: Array<{ from: string; to: string; color?: string }>;
+  highlights: Array<{ square: string; color: string }>;
+  extraLines: string[];
+  extraAnnotations: string[];
+}
+
+const SQUARE = '[a-h][1-8]';
+const ARROW_RE = new RegExp(`^A(${SQUARE})-(${SQUARE})(?:/([rgby]))?$`);
+const HIGHLIGHT_RE = new RegExp(`^H(${SQUARE})(?:/([ygb]))?$`);
+
+const ANNOTATION_COLORS = {
+  r: '#e67768',
+  g: '#b3ce6e',
+  b: '#6ab5d6',
+  y: '#f1ad24',
+} as const;
+
+export function isRawFenString(str: string): boolean {
+  const parts = str.trim().split(/\s+/);
+  const ranks = parts[0].split('/');
+  if (ranks.length !== 8) return false;
+  for (const rank of ranks) {
+    if (!/^[rnbqkpRNBQKP1-8]+$/.test(rank)) return false;
+    let count = 0;
+    for (const ch of rank) {
+      if (ch >= '1' && ch <= '8') count += parseInt(ch, 10);
+      else count += 1;
+    }
+    if (count !== 8) return false;
+  }
+  return true;
+}
+
+export function parseChessBoardBlock(lines: string[]): ParsedChessBoard | null {
+  const text = lines.join('\n').trim();
+  if (!text) return null;
+
+  let fen = '';
+  let orientation: 'white' | 'black' = 'white';
+  const extraLines: string[] = [];
+  const extraAnnotations: string[] = [];
+  const arrows: Array<{ from: string; to: string; color?: string }> = [];
+  const highlights: Array<{ square: string; color: string }> = [];
+
+  for (const rawLine of lines) {
+    const trimmed = rawLine.trim();
+    if (!trimmed) {
+      if (fen) extraLines.push('');
+      continue;
+    }
+
+    const fenPrefixMatch = /^fen:\s*(.+)$/i.exec(trimmed);
+    if (fenPrefixMatch) {
+      if (!fen) {
+        fen = fenPrefixMatch[1].trim();
+      } else {
+        extraLines.push(rawLine);
+      }
+      continue;
+    }
+
+    const orientMatch = /^orientation:\s*(white|black)$/i.exec(trimmed);
+    if (orientMatch) {
+      orientation = orientMatch[1].toLowerCase() as 'white' | 'black';
+      continue;
+    }
+
+    if (trimmed.toLowerCase().startsWith('annotations:')) {
+      const tokens = trimmed.slice(12).trim().split(/\s+/);
+      for (const token of tokens) {
+        if (!token) continue;
+        const aMatch = ARROW_RE.exec(token);
+        if (aMatch) {
+          const [, from, to, colorKey] = aMatch;
+          arrows.push({
+            from,
+            to,
+            color: colorKey
+              ? ANNOTATION_COLORS[colorKey as keyof typeof ANNOTATION_COLORS]
+              : '#f1ad24',
+          });
+          continue;
+        }
+        const hMatch = HIGHLIGHT_RE.exec(token);
+        if (hMatch) {
+          const [, square, colorKey] = hMatch;
+          highlights.push({
+            square,
+            color: colorKey
+              ? ANNOTATION_COLORS[colorKey as keyof typeof ANNOTATION_COLORS]
+              : '#e67768',
+          });
+          continue;
+        }
+        extraAnnotations.push(token);
+      }
+      continue;
+    }
+
+    if (!fen && isRawFenString(trimmed)) {
+      fen = trimmed;
+      continue;
+    }
+
+    extraLines.push(rawLine);
+  }
+
+  if (!fen) return null;
+
+  const fenParts = fen.split(/\s+/);
+  if (fenParts.length === 1 && fenParts[0].split('/').length === 8) {
+    fen = `${fenParts[0]} w - - 0 1`;
+  }
+
+  return {
+    fen,
+    orientation,
+    arrows,
+    highlights,
+    extraLines,
+    extraAnnotations,
+  };
+}
+
+export function looksLikePgn(text: string): boolean {
+  const trimmed = text.trim();
+  if (
+    trimmed.startsWith('[Event ') ||
+    trimmed.startsWith('[Site ') ||
+    trimmed.startsWith('[Date ') ||
+    trimmed.startsWith('[FEN ')
+  ) {
+    return true;
+  }
+  if (/(?:^|\n)\s*1\.\s*[a-hKQRBNxO\-+#=]+/.test(trimmed)) {
+    return true;
+  }
+  return false;
+}
+
 export function markdownToYDoc(
   markdown: string,
   doc = new Y.Doc(),
@@ -93,27 +236,87 @@ export function markdownToYDoc(
   let codeLang = '';
   let codeLines: string[] = [];
 
-  let inChessBlock: 'pgn' | 'fen' | null = null;
-  let chessLines: string[] = [];
-
   for (const rawLine of contentLines) {
     const line = rawLine.trim();
 
     if (inCodeBlock) {
       if (line.startsWith('```')) {
         inCodeBlock = false;
-        const blockId = nanoid();
-        const codeMap = new Y.Map();
-        blocks.set(blockId, codeMap);
-        codeMap.set('sys:id', blockId);
-        codeMap.set('sys:flavour', 'affine:code');
-        codeMap.set('sys:version', 1);
-        codeMap.set('sys:children', new Y.Array());
-        codeMap.set('prop:language', codeLang);
-        const yText = new Y.Text();
-        codeMap.set('prop:text', yText);
-        yText.insert(0, codeLines.join('\n'));
-        childBlockIds.push(blockId);
+        const normalizedLang = codeLang.toLowerCase();
+
+        // 1. Check if it's a chessboard / FEN block
+        const parsedBoard =
+          normalizedLang === 'fen' ||
+          normalizedLang === 'chessboard' ||
+          normalizedLang === '' ||
+          normalizedLang === 'text'
+            ? parseChessBoardBlock(codeLines)
+            : null;
+
+        if (parsedBoard) {
+          const blockId = nanoid();
+          const chessMap = new Y.Map();
+          blocks.set(blockId, chessMap);
+          chessMap.set('sys:id', blockId);
+          chessMap.set('sys:flavour', 'affine:chess-board');
+          chessMap.set('sys:version', 1);
+          chessMap.set('sys:children', new Y.Array());
+          chessMap.set('prop:fen', parsedBoard.fen);
+          chessMap.set('prop:orientation', parsedBoard.orientation);
+          chessMap.set('prop:caption', '');
+          chessMap.set('prop:editable', true);
+
+          const arrowsArray = new Y.Array();
+          arrowsArray.push(parsedBoard.arrows);
+          chessMap.set('prop:arrows', arrowsArray);
+
+          const highlightsArray = new Y.Array();
+          highlightsArray.push(parsedBoard.highlights);
+          chessMap.set('prop:highlights', highlightsArray);
+
+          const extraLinesArray = new Y.Array();
+          extraLinesArray.push(parsedBoard.extraLines);
+          chessMap.set('prop:extraLines', extraLinesArray);
+
+          const extraAnnotationsArray = new Y.Array();
+          extraAnnotationsArray.push(parsedBoard.extraAnnotations);
+          chessMap.set('prop:extraAnnotations', extraAnnotationsArray);
+
+          childBlockIds.push(blockId);
+        } else if (
+          normalizedLang === 'pgn' ||
+          (normalizedLang === '' && looksLikePgn(codeLines.join('\n')))
+        ) {
+          // 2. Check if it's a PGN chess game block
+          const blockId = nanoid();
+          const chessMap = new Y.Map();
+          blocks.set(blockId, chessMap);
+          chessMap.set('sys:id', blockId);
+          chessMap.set('sys:flavour', 'affine:chess-game');
+          chessMap.set('sys:version', 1);
+          chessMap.set('sys:children', new Y.Array());
+          chessMap.set('prop:orientation', 'white');
+          chessMap.set('prop:caption', '');
+          chessMap.set('prop:pgn', codeLines.join('\n').trim());
+          chessMap.set('prop:currentPath', new Y.Array());
+          chessMap.set('prop:analysisJson', '');
+          childBlockIds.push(blockId);
+        } else {
+          // 3. Regular code block
+          const blockId = nanoid();
+          const codeMap = new Y.Map();
+          blocks.set(blockId, codeMap);
+          codeMap.set('sys:id', blockId);
+          codeMap.set('sys:flavour', 'affine:code');
+          codeMap.set('sys:version', 1);
+          codeMap.set('sys:children', new Y.Array());
+          codeMap.set('prop:language', codeLang);
+          const yText = new Y.Text();
+          codeMap.set('prop:text', yText);
+          yText.insert(0, codeLines.join('\n'));
+          childBlockIds.push(blockId);
+        }
+
         codeLines = [];
       } else {
         codeLines.push(rawLine);
@@ -121,49 +324,10 @@ export function markdownToYDoc(
       continue;
     }
 
-    if (inChessBlock) {
-      if (line.startsWith('```')) {
-        const blockId = nanoid();
-        const chessMap = new Y.Map();
-        blocks.set(blockId, chessMap);
-        chessMap.set('sys:id', blockId);
-        chessMap.set('sys:version', 1);
-        chessMap.set('sys:children', new Y.Array());
-        chessMap.set('prop:orientation', 'white');
-        chessMap.set('prop:caption', '');
-
-        if (inChessBlock === 'pgn') {
-          chessMap.set('sys:flavour', 'affine:chess-game');
-          chessMap.set('prop:pgn', chessLines.join('\n').trim());
-          chessMap.set('prop:currentPath', new Y.Array());
-          chessMap.set('prop:analysisJson', '');
-        } else {
-          chessMap.set('sys:flavour', 'affine:chess-board');
-          chessMap.set('prop:fen', chessLines.join('\n').trim());
-          chessMap.set('prop:arrows', new Y.Array());
-          chessMap.set('prop:highlights', new Y.Array());
-          chessMap.set('prop:editable', true);
-        }
-
-        childBlockIds.push(blockId);
-        inChessBlock = null;
-        chessLines = [];
-      } else {
-        chessLines.push(rawLine);
-      }
-      continue;
-    }
-
     if (line.startsWith('```')) {
-      const tag = line.slice(3).trim().toLowerCase();
-      if (tag === 'pgn' || tag === 'fen') {
-        inChessBlock = tag;
-        chessLines = [];
-      } else {
-        inCodeBlock = true;
-        codeLang = tag;
-        codeLines = [];
-      }
+      inCodeBlock = true;
+      codeLang = line.slice(3).trim();
+      codeLines = [];
       continue;
     }
 
@@ -387,7 +551,8 @@ export function computeHash(content: string): string {
 export async function importMarkdownFile(
   state: AppState,
   workspaceId: string,
-  filePath: string
+  filePath: string,
+  force = false
 ): Promise<string | null> {
   const fileName = basename(filePath);
   if (fileName === '.doc-map.json' || !fileName.endsWith('.md')) {
@@ -407,8 +572,8 @@ export async function importMarkdownFile(
     if (entryFileName === fileName) {
       targetDocId = docId;
       const entryHash = typeof entry === 'object' ? entry.hash : null;
-      if (entryHash === hash) {
-        // Content hasn't changed; verify rootDoc already has targetDocId in meta.pages
+      if (!force && entryHash === hash) {
+        // Content hasn't changed and not forced; verify rootDoc already has targetDocId in meta.pages
         const rootDoc = await loadYDoc(state, workspaceId, workspaceId);
         const metaMap = rootDoc.getMap('meta');
         const pages = metaMap.get('pages') as Y.Array<unknown> | undefined;
@@ -584,7 +749,8 @@ export async function importMarkdownFile(
 
 export async function scanAndImportWorkspaceMarkdown(
   state: AppState,
-  workspaceId: string
+  workspaceId: string,
+  force = false
 ): Promise<number> {
   const markdownDir = join(state.db.dataDir, 'markdown', workspaceId);
   if (!existsSync(markdownDir)) return 0;
@@ -595,7 +761,7 @@ export async function scanAndImportWorkspaceMarkdown(
   for (const file of files) {
     try {
       const fullPath = join(markdownDir, file);
-      const res = await importMarkdownFile(state, workspaceId, fullPath);
+      const res = await importMarkdownFile(state, workspaceId, fullPath, force);
       if (res) count++;
     } catch (err) {
       console.error(`[MarkdownImport ERROR] file ${file}:`, err);
@@ -663,7 +829,8 @@ export async function scanAndImportWorkspaceMarkdown(
 }
 
 export async function scanAndImportAllMarkdown(
-  state: AppState
+  state: AppState,
+  force = false
 ): Promise<number> {
   const baseMarkdownDir = join(state.db.dataDir, 'markdown');
   if (!existsSync(baseMarkdownDir)) return 0;
@@ -689,7 +856,11 @@ export async function scanAndImportAllMarkdown(
 
   let total = 0;
   for (const workspaceId of workspaceDirs) {
-    const count = await scanAndImportWorkspaceMarkdown(state, workspaceId);
+    const count = await scanAndImportWorkspaceMarkdown(
+      state,
+      workspaceId,
+      force
+    );
     total += count;
   }
 
