@@ -54,18 +54,25 @@ import {
   textContentToString,
 } from './utils.js';
 
+function getPdfFontUrl(fontName: string): string {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return `${window.location.origin}/fonts/${fontName}`;
+  }
+  return `https://cdn.affine.pro/fonts/${fontName}`;
+}
+
 pdfMake.fonts = {
   Inter: {
-    normal: 'https://cdn.affine.pro/fonts/Inter-Regular.woff',
-    bold: 'https://cdn.affine.pro/fonts/Inter-SemiBold.woff',
-    italics: 'https://cdn.affine.pro/fonts/Inter-Italic.woff',
-    bolditalics: 'https://cdn.affine.pro/fonts/Inter-SemiBoldItalic.woff',
+    normal: getPdfFontUrl('Inter-Regular.woff'),
+    bold: getPdfFontUrl('Inter-SemiBold.woff'),
+    italics: getPdfFontUrl('Inter-Italic.woff'),
+    bolditalics: getPdfFontUrl('Inter-SemiBoldItalic.woff'),
   },
   SarasaGothicCL: {
-    normal: 'https://cdn.affine.pro/fonts/SarasaGothicCL-Regular.ttf',
-    bold: 'https://cdn.affine.pro/fonts/SarasaGothicCL-Regular.ttf',
-    italics: 'https://cdn.affine.pro/fonts/SarasaGothicCL-Regular.ttf',
-    bolditalics: 'https://cdn.affine.pro/fonts/SarasaGothicCL-Regular.ttf',
+    normal: getPdfFontUrl('SarasaGothicCL-Regular.ttf'),
+    bold: getPdfFontUrl('SarasaGothicCL-Regular.ttf'),
+    italics: getPdfFontUrl('SarasaGothicCL-Regular.ttf'),
+    bolditalics: getPdfFontUrl('SarasaGothicCL-Regular.ttf'),
   },
 };
 
