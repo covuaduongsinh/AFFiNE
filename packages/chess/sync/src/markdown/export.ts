@@ -286,6 +286,8 @@ export async function exportAllDocsToMarkdown(
   state: AppState
 ): Promise<number> {
   try {
+    const { loadYDoc, releaseDoc } = await import('../sync/docs.js');
+
     const snaps = await state.db.db
       .select({
         workspaceId: docSnapshots.workspaceId,
@@ -299,12 +301,47 @@ export async function exportAllDocsToMarkdown(
       })
       .from(docUpdates);
 
+    const workspaceIds = new Set<string>();
+    for (const row of [...snaps, ...updates]) {
+      if (row.workspaceId) workspaceIds.add(row.workspaceId);
+    }
+
     const seen = new Set<string>();
     const pairs: { workspaceId: string; docId: string }[] = [];
 
+    // 1. Gather all pages registered in rootDoc of each workspace
+    for (const wsId of workspaceIds) {
+      try {
+        const rootDoc = await loadYDoc(state, wsId, wsId);
+        const metaMap = rootDoc.getMap('meta');
+        const pages = metaMap.get('pages');
+        if (pages && typeof (pages as any).forEach === 'function') {
+          (pages as any).forEach((p: unknown) => {
+            if (p && typeof p === 'object') {
+              const pId =
+                typeof (p as any).get === 'function'
+                  ? (p as any).get('id')
+                  : (p as any).id;
+              if (pId && typeof pId === 'string') {
+                const key = `${wsId}:${pId}`;
+                if (!seen.has(key)) {
+                  seen.add(key);
+                  pairs.push({ workspaceId: wsId, docId: pId });
+                }
+              }
+            }
+          });
+        }
+        releaseDoc(wsId, wsId);
+      } catch {
+        // ignore
+      }
+    }
+
+    // 2. Also include any remaining pairs from DB
     for (const row of [...snaps, ...updates]) {
       const key = `${row.workspaceId}:${row.docId}`;
-      if (!seen.has(key)) {
+      if (!seen.has(key) && !row.docId.startsWith('db$') && !row.docId.startsWith('userdata$')) {
         seen.add(key);
         pairs.push(row);
       }
