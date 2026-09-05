@@ -12,6 +12,7 @@ import { errorBody, HttpError } from './errors.js';
 import { createResolvers } from './graphql/resolvers.js';
 import { typeDefs } from './graphql/schema.js';
 import { exportAllDocsToMarkdown } from './markdown/export.js';
+import { scanAndImportAllMarkdown } from './markdown/import.js';
 import { attachSocket } from './sync/socket.js';
 import type { AppState, GqlContext } from './types.js';
 
@@ -59,6 +60,30 @@ export async function startChessSync(
   });
 
   app.get('/health', async () => ({ ok: true, version: '0.27.0' }));
+
+  app.post('/api/sync/import-markdown', async (_req, reply) => {
+    try {
+      const count = await scanAndImportAllMarkdown(state);
+      return await reply.send({ success: true, count });
+    } catch (err) {
+      app.log.error(err);
+      return await reply
+        .status(500)
+        .send({ success: false, error: String(err) });
+    }
+  });
+
+  app.post('/api/sync/export-markdown', async (_req, reply) => {
+    try {
+      await exportAllDocsToMarkdown(state);
+      return await reply.send({ success: true });
+    } catch (err) {
+      app.log.error(err);
+      return await reply
+        .status(500)
+        .send({ success: false, error: String(err) });
+    }
+  });
 
   await registerAuthRoutes(app, state);
   registerBlobRoutes(app, state);

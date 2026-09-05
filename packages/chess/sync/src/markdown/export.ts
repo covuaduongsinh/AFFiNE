@@ -4,7 +4,6 @@ import { join } from 'node:path';
 
 import type * as Y from 'yjs';
 
-import { loadYDoc, releaseDoc } from '../sync/docs.js';
 import type { AppState } from '../types.js';
 
 const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -206,6 +205,8 @@ export async function exportDocToMarkdownFile(
   workspaceId: string,
   docId: string
 ): Promise<string | null> {
+  // Dynamic import to prevent circular dependency with sync/docs.ts
+  const { loadYDoc, releaseDoc } = await import('../sync/docs.js');
   const doc = await loadYDoc(state, workspaceId, docId);
   const result = yDocToMarkdown(doc);
   releaseDoc(workspaceId, docId);
@@ -313,7 +314,10 @@ export async function exportAllDocsToMarkdown(
     }
     return count;
   } catch (err) {
-    console.error('[MarkdownExport ERROR] exportAllDocsToMarkdown failed:', err);
+    console.error(
+      '[MarkdownExport ERROR] exportAllDocsToMarkdown failed:',
+      err
+    );
     return 0;
   }
 }
