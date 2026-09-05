@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync } from 'node:fs';
-import { readFile, writeFile } from 'node:fs/promises';
+import { copyFile, readFile, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 
 import { nanoid } from 'nanoid';
@@ -552,14 +552,28 @@ export async function scanAndImportAllMarkdown(
   if (!existsSync(baseMarkdownDir)) return 0;
 
   const entries = readdirSync(baseMarkdownDir, { withFileTypes: true });
-  let total = 0;
+  const workspaceDirs = entries.filter(e => e.isDirectory()).map(e => e.name);
+  const rootFiles = entries.filter(e => e.isFile() && e.name.endsWith('.md'));
 
-  for (const entry of entries) {
-    if (entry.isDirectory()) {
-      const workspaceId = entry.name;
-      const count = await scanAndImportWorkspaceMarkdown(state, workspaceId);
-      total += count;
+  // If files were placed in the root notes/ folder directly on Dropbox,
+  // distribute them to all workspace directories so they get imported.
+  if (rootFiles.length > 0 && workspaceDirs.length > 0) {
+    for (const file of rootFiles) {
+      const sourcePath = join(baseMarkdownDir, file.name);
+      for (const workspaceId of workspaceDirs) {
+        const destDir = join(baseMarkdownDir, workspaceId);
+        const destPath = join(destDir, file.name);
+        if (!existsSync(destPath)) {
+          await copyFile(sourcePath, destPath).catch(() => {});
+        }
+      }
     }
+  }
+
+  let total = 0;
+  for (const workspaceId of workspaceDirs) {
+    const count = await scanAndImportWorkspaceMarkdown(state, workspaceId);
+    total += count;
   }
 
   return total;

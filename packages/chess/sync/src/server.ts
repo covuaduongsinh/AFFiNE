@@ -196,6 +196,7 @@ export async function startChessSync(
 
   await app.ready();
   const io = attachSocket(app, state);
+  state.io = io;
   await app.listen({ host: config.host, port: config.port });
   const address = app.server.address();
   const port =

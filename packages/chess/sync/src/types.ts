@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import type { Server } from 'socket.io';
 
 import type { DbHandle } from './db/client.js';
 
@@ -28,6 +29,7 @@ export type AppState = {
   publicOrigin: string;
   /** Lower-cased emails allowed to sign in. Empty means anyone. */
   allowedEmails: string[];
+  io?: Server;
 };
 
 export type GqlContext = {

@@ -119,6 +119,18 @@ export async function pushUpdate(
   }
   releaseDoc(workspaceId, docId);
   scheduleDocMarkdownExport(state, workspaceId, docId);
+
+  if (state.io) {
+    state.io.to(`space:workspace:${workspaceId}`).emit('space:broadcast-doc-update', {
+      spaceType: 'workspace',
+      spaceId: workspaceId,
+      docId,
+      update: bytesToBase64(update),
+      timestamp,
+      editor,
+    });
+  }
+
   return timestamp;
 }
 
