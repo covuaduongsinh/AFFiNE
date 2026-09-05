@@ -459,7 +459,11 @@ export function markdownToYDoc(
       continue;
     }
 
-    // Paragraph / empty line
+    // Paragraph
+    if (!line) {
+      continue;
+    }
+
     const blockId = nanoid();
     const pMap = new Y.Map();
     blocks.set(blockId, pMap);
@@ -470,9 +474,7 @@ export function markdownToYDoc(
     pMap.set('prop:type', 'text');
     const yText = new Y.Text();
     pMap.set('prop:text', yText);
-    if (line.length > 0) {
-      parseInlineFormatting(rawLine, yText);
-    }
+    parseInlineFormatting(rawLine, yText);
     pMap.set('prop:collapsed', false);
     childBlockIds.push(blockId);
   }
