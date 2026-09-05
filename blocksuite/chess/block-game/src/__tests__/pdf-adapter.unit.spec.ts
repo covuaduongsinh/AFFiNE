@@ -95,4 +95,15 @@ describe('chess game pdf adapter', () => {
     });
     expect(JSON.stringify(content)).not.toContain('secret');
   });
+
+  it('renders chess diagram font text when chessDiagramStyle is font', async () => {
+    const configs = new Map<string, unknown>([['chessDiagramStyle', 'font']]);
+    const content = await chessGamePdfAdapterMatcher.toContent(snapshot, {
+      props: { pgn: '1. e4 e5 *' },
+      baseIndent: 0,
+      configs,
+    });
+    expect(textOf(content[0])).toContain('!"#$%&\'()*');
+    expect(content[0]).toMatchObject({ font: 'OpenChessFont', fontSize: 22 });
+  });
 });

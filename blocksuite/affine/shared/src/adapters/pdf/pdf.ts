@@ -33,6 +33,10 @@ import {
   type BlockPdfAdapterMatcher,
   BlockPdfAdapterMatcherIdentifier,
 } from './block-adapter.js';
+import {
+  OPEN_CHESS_FONT_BASE64,
+  OPEN_CHESS_FONT_VFS_NAME,
+} from './chess-font-vfs.js';
 import { resolveCssVariable } from './css-utils.js';
 import { extractTextWithInline } from './delta-converter.js';
 import {
@@ -61,6 +65,11 @@ function getPdfFontUrl(fontName: string): string {
   return `https://cdn.affine.pro/fonts/${fontName}`;
 }
 
+if (!pdfMake.vfs) {
+  pdfMake.vfs = {};
+}
+pdfMake.vfs[OPEN_CHESS_FONT_VFS_NAME] = OPEN_CHESS_FONT_BASE64;
+
 pdfMake.fonts = {
   Inter: {
     normal: getPdfFontUrl('Inter-Regular.woff'),
@@ -73,6 +82,12 @@ pdfMake.fonts = {
     bold: getPdfFontUrl('SarasaGothicCL-Regular.ttf'),
     italics: getPdfFontUrl('SarasaGothicCL-Regular.ttf'),
     bolditalics: getPdfFontUrl('SarasaGothicCL-Regular.ttf'),
+  },
+  OpenChessFont: {
+    normal: OPEN_CHESS_FONT_VFS_NAME,
+    bold: OPEN_CHESS_FONT_VFS_NAME,
+    italics: OPEN_CHESS_FONT_VFS_NAME,
+    bolditalics: OPEN_CHESS_FONT_VFS_NAME,
   },
 };
 
@@ -309,6 +324,7 @@ export class PdfAdapter extends BaseAdapter<PdfAdapterFile> {
           props,
           baseIndent,
           assets: assets ?? this.job.assetsManager,
+          configs: this.configs,
         }))
       );
     } else if (hasTextContent(textContent)) {

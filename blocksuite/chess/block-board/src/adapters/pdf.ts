@@ -7,6 +7,7 @@ import {
 import {
   type BoardSvgArrow,
   type BoardSvgHighlight,
+  fenToChessFontText,
   fenToSvg,
 } from '@blocksuite/chess-core';
 
@@ -46,14 +47,14 @@ function readHighlights(value: unknown): BoardSvgHighlight[] {
 }
 
 /**
- * Maps an `affine:chess-board` snapshot to a sized vector board on the PDF.
+ * Maps an `affine:chess-board` snapshot to a sized vector board or font diagram on the PDF.
  *
  * `extraLines` and `extraAnnotations` stay out: they are round-trip bytes for
  * the reader's Obsidian vault, not something a reader of the PDF asked for.
  */
 export const chessBoardPdfAdapterMatcher: BlockPdfAdapterMatcher = {
   flavour: ChessBoardBlockSchema.model.flavour,
-  toContent: (_block, { props }) => {
+  toContent: (_block, { props, configs }) => {
     const fen =
       typeof props.fen === 'string' && props.fen.trim() !== ''
         ? props.fen
@@ -61,21 +62,33 @@ export const chessBoardPdfAdapterMatcher: BlockPdfAdapterMatcher = {
     const orientation = props.orientation === 'black' ? 'black' : 'white';
     const arrows = readArrows(props.arrows);
     const highlights = readHighlights(props.highlights);
-    const content: PdfContent[] = [
-      {
-        svg: fenToSvg(fen, {
-          orientation,
-          size: BOARD_SIZE,
-          arrows,
-          highlights,
-          textInSvg: false,
-        }),
-        width: BOARD_SIZE,
-        height: BOARD_SIZE,
-        margin: [0, 8, 0, 4],
-        alignment: 'center',
-      },
-    ];
+    const useFont = configs?.get('chessDiagramStyle') === 'font';
+
+    const diagramContent: PdfContent = useFont
+      ? {
+          text: fenToChessFontText(fen, { orientation }),
+          font: 'OpenChessFont',
+          fontSize: 22,
+          lineHeight: 1.0,
+          alignment: 'center',
+          margin: [0, 8, 0, 4],
+          preserveLeadingSpaces: true,
+        }
+      : {
+          svg: fenToSvg(fen, {
+            orientation,
+            size: BOARD_SIZE,
+            arrows,
+            highlights,
+            textInSvg: false,
+          }),
+          width: BOARD_SIZE,
+          height: BOARD_SIZE,
+          margin: [0, 8, 0, 4],
+          alignment: 'center',
+        };
+
+    const content: PdfContent[] = [diagramContent];
 
     const caption = typeof props.caption === 'string' ? props.caption : '';
     if (caption !== '') {

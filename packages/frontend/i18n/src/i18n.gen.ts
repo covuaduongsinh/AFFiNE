@@ -236,6 +236,14 @@ export function useAFFiNEI18N(): {
       */
     ["Export to PDF"](): string;
     /**
+      * `Export to PDF (Vector Graphics)`
+      */
+    ["Export to PDF (Vector)"](): string;
+    /**
+      * `Export to PDF (Chess Font)`
+      */
+    ["Export to PDF (Chess Font)"](): string;
+    /**
       * `Export to PNG`
       */
     ["Export to PNG"](): string;

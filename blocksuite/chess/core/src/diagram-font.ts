@@ -64,8 +64,8 @@ export function fenToChessFontText(
   const lines: string[] = [];
 
   if (showBorder) {
-    // Top border with a-h file labels
-    lines.push('!"#$%&\'()');
+    // Top border with a-h file labels (10 characters: top-left corner, a-h, top-right corner)
+    lines.push('!"#$%&\'()*');
   }
 
   for (let r = 0; r < 8; r++) {
@@ -120,8 +120,8 @@ export function fenToChessFontText(
   }
 
   if (showBorder) {
-    // Bottom border with a-h file labels
-    lines.push('/01234567');
+    // Bottom border with a-h file labels (10 characters: bottom-left corner, a-h, bottom-right corner)
+    lines.push('/012345678');
   }
 
   return lines.join('\n');

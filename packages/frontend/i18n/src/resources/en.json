@@ -49,6 +49,8 @@
   "Export to HTML": "Export to HTML",
   "Export to Markdown": "Export to Markdown",
   "Export to PDF": "Export to PDF",
+  "Export to PDF (Vector)": "Export to PDF (Vector Graphics)",
+  "Export to PDF (Chess Font)": "Export to PDF (Chess Font)",
   "Export to PNG": "Export to PNG",
   "FILE_ALREADY_EXISTS": "File already exists",
   "Favorite": "Favourite",

@@ -40,7 +40,8 @@ type ExportType =
   | 'markdown'
   | 'copy-markdown'
   | 'snapshot'
-  | 'pdf-export';
+  | 'pdf-export'
+  | 'pdf-export-font';
 
 interface ExportHandlerOptions {
   page: Store;
@@ -206,7 +207,11 @@ async function exportHandler({
       return true;
     }
     case 'pdf-export': {
-      await PdfTransformer.exportDoc(page);
+      await PdfTransformer.exportDoc(page, { chessDiagramStyle: 'vector' });
+      return true;
+    }
+    case 'pdf-export-font': {
+      await PdfTransformer.exportDoc(page, { chessDiagramStyle: 'font' });
       return true;
     }
   }

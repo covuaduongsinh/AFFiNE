@@ -33,6 +33,7 @@ interface ExportProps {
       | 'copy-markdown'
       | 'snapshot'
       | 'pdf-export'
+      | 'pdf-export-font'
   ) => void;
   pageMode?: 'page' | 'edgeless';
   className?: string;
@@ -114,13 +115,22 @@ export const ExportMenuItems = ({
         label={t['com.affine.export.copy-markdown']()}
       />
       {pageMode !== 'edgeless' && (
-        <ExportMenuItem
-          onSelect={() => exportHandler('pdf-export')}
-          className={className}
-          type="pdf-export"
-          icon={<ExportToPdfIcon />}
-          label={t['Export to PDF']()}
-        />
+        <>
+          <ExportMenuItem
+            onSelect={() => exportHandler('pdf-export')}
+            className={className}
+            type="pdf-export"
+            icon={<ExportToPdfIcon />}
+            label={t['Export to PDF (Vector)']()}
+          />
+          <ExportMenuItem
+            onSelect={() => exportHandler('pdf-export-font')}
+            className={className}
+            type="pdf-export-font"
+            icon={<ExportToPdfIcon />}
+            label={t['Export to PDF (Chess Font)']()}
+          />
+        </>
       )}
       <ExportMenuItem
         onSelect={() => exportHandler('snapshot')}

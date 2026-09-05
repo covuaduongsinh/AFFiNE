@@ -18,6 +18,8 @@ export interface BlockPdfAdapterContext {
   /** Left indent in pt the adapter computed for this block's depth. */
   baseIndent: number;
   assets?: FromDocSnapshotPayload['assets'];
+  /** Adapter configuration options (e.g. chessDiagramStyle). */
+  configs?: Map<string, unknown>;
 }
 
 /**

@@ -6,6 +6,7 @@ import {
 } from '@blocksuite/affine-shared/adapters';
 import {
   captionFromHeaders,
+  fenToChessFontText,
   fenToSvg,
   type Game,
   parsePgn,
@@ -28,7 +29,7 @@ const BOARD_SIZE = 320;
  */
 export const chessGamePdfAdapterMatcher: BlockPdfAdapterMatcher = {
   flavour: ChessGameBlockSchema.model.flavour,
-  toContent: (_block, { props, baseIndent = 0 }) => {
+  toContent: (_block, { props, baseIndent = 0, configs }) => {
     const rawPgn =
       typeof props.pgn === 'string' && props.pgn.trim() !== ''
         ? props.pgn
@@ -55,19 +56,31 @@ export const chessGamePdfAdapterMatcher: BlockPdfAdapterMatcher = {
         : [];
 
     const fen = toFen(positionAt(game, currentPath));
-    const content: PdfContent[] = [
-      {
-        svg: fenToSvg(fen, {
-          orientation,
-          size: BOARD_SIZE,
-          textInSvg: false,
-        }),
-        width: BOARD_SIZE,
-        height: BOARD_SIZE,
-        margin: [0, 8, 0, 4],
-        alignment: 'center',
-      },
-    ];
+    const useFont = configs?.get('chessDiagramStyle') === 'font';
+
+    const diagramContent: PdfContent = useFont
+      ? {
+          text: fenToChessFontText(fen, { orientation }),
+          font: 'OpenChessFont',
+          fontSize: 22,
+          lineHeight: 1.0,
+          alignment: 'center',
+          margin: [0, 8, 0, 4],
+          preserveLeadingSpaces: true,
+        }
+      : {
+          svg: fenToSvg(fen, {
+            orientation,
+            size: BOARD_SIZE,
+            textInSvg: false,
+          }),
+          width: BOARD_SIZE,
+          height: BOARD_SIZE,
+          margin: [0, 8, 0, 4],
+          alignment: 'center',
+        };
+
+    const content: PdfContent[] = [diagramContent];
 
     const propsCaption = typeof props.caption === 'string' ? props.caption : '';
     // A headerless game captions as "? – ?", which is worse than no caption.

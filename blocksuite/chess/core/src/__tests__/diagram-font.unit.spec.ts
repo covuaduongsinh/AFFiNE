@@ -8,12 +8,12 @@ describe('fenToChessFontText', () => {
     const text = fenToChessFontText(START_FEN);
     const lines = text.split('\n');
     expect(lines).toHaveLength(10);
-    expect(lines[0]).toBe('!"#$%&\'()');
+    expect(lines[0]).toBe('!"#$%&\'()*');
     expect(lines[1]).toBe('8TmVwLvMt8'); // Black pieces on rank 8
     expect(lines[2]).toBe('7oOoOoOoO7'); // Black pawns on rank 7
     expect(lines[7]).toBe('2PpPpPpPp2'); // White pawns on rank 2
     expect(lines[8]).toBe('1rNbQkBnR1'); // White pieces on rank 1
-    expect(lines[9]).toBe('/01234567');
+    expect(lines[9]).toBe('/012345678');
   });
 
   it('supports black orientation by flipping ranks and files', () => {
