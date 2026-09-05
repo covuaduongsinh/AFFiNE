@@ -6,7 +6,13 @@ import { basename, join } from 'node:path';
 import { nanoid } from 'nanoid';
 import * as Y from 'yjs';
 
-import { deleteDoc, loadYDoc, pushUpdate, releaseDoc } from '../sync/docs.js';
+import {
+  compactDoc,
+  deleteDoc,
+  loadYDoc,
+  pushUpdate,
+  releaseDoc,
+} from '../sync/docs.js';
 import type { AppState } from '../types.js';
 import { getOwnerId } from '../workspace.js';
 
@@ -634,6 +640,7 @@ export async function importMarkdownFile(
     releaseDoc(workspaceId, targetDocId);
 
     await pushUpdate(state, workspaceId, targetDocId, update, ownerId);
+    await compactDoc(state, workspaceId, targetDocId, doc, now);
 
     // Update title in workspace root doc if changed
     const rootDoc = await loadYDoc(state, workspaceId, workspaceId);
@@ -713,6 +720,7 @@ export async function importMarkdownFile(
     const update = Y.encodeStateAsUpdate(doc);
 
     await pushUpdate(state, workspaceId, newDocId, update, ownerId);
+    await compactDoc(state, workspaceId, newDocId, doc, now);
 
     // Register in workspace root doc
     const rootDoc = await loadYDoc(state, workspaceId, workspaceId);
