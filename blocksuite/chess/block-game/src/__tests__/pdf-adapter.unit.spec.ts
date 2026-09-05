@@ -45,6 +45,7 @@ describe('chess game pdf adapter', () => {
   it('prints the board plus the movetext', async () => {
     const content = await render({ pgn: '1. e4 e5 2. Nf3 *' });
     expect(svgOf(content[0])).toContain('<svg');
+    expect(svgOf(content[0])).not.toContain('<text');
     const texts = content.map(textOf).filter(text => text !== undefined);
     expect(texts.some(text => text.includes('Nf3'))).toBe(true);
     // Headers are dropped: the movetext is the reader's content.

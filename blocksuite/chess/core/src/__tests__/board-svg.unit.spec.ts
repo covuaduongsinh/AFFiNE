@@ -68,6 +68,7 @@ describe('fenToSvg', () => {
     expect(labelled).toContain('>a</text>');
     expect(labelled).toContain('>8</text>');
     expect(fenToSvg(START_FEN, { coordinates: false })).not.toContain('<text');
+    expect(fenToSvg(START_FEN, { textInSvg: false })).not.toContain('<text');
   });
 
   it('renders correctly with all supported piece sets', () => {

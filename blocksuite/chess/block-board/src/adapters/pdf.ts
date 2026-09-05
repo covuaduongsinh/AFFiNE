@@ -66,6 +66,7 @@ export const chessBoardPdfAdapterMatcher: BlockPdfAdapterMatcher = {
           size: BOARD_SIZE,
           arrows: readArrows(props.arrows),
           highlights: readHighlights(props.highlights),
+          textInSvg: false,
         }),
         width: BOARD_SIZE,
         height: BOARD_SIZE,

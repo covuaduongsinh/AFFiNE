@@ -1012,10 +1012,17 @@ export class PdfAdapter extends BaseAdapter<PdfAdapterFile> {
     docDefinition: TDocumentDefinitions
   ): Promise<Blob> {
     return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error('PDF generation timed out after 30 seconds'));
+      }, 30_000);
       try {
         const pdfDocGenerator = pdfMake.createPdf(docDefinition);
-        pdfDocGenerator.getBlob(blob => resolve(blob));
+        pdfDocGenerator.getBlob(blob => {
+          clearTimeout(timer);
+          resolve(blob);
+        });
       } catch (error) {
+        clearTimeout(timer);
         reject(error);
       }
     });

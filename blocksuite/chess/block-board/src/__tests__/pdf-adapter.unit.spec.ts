@@ -43,10 +43,11 @@ describe('chess board pdf adapter', () => {
     expect(chessBoardPdfAdapterMatcher.flavour).toBe('affine:chess-board');
   });
 
-  it('draws the position as a sized vector board', async () => {
+  it('draws the position as a sized vector board without <text> tags', async () => {
     const content = await render({ fen: START_FEN, orientation: 'white' });
     expect(content).toHaveLength(1);
     expect(svgOf(content[0])).toContain('<svg');
+    expect(svgOf(content[0])).not.toContain('<text');
     expect(content[0]).toMatchObject({ width: 320, height: 320 });
   });
 

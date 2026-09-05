@@ -56,6 +56,14 @@ export interface BoardSvgOptions {
   palette?: BoardSvgPalette;
   /** Chess piece set theme. Default 'staunton'. */
   pieceSet?: ChessPieceSet;
+  /**
+   * When false, omit `<text>` elements from the SVG. pdfmake's built-in SVG
+   * parser requires every font-family used in `<text>` to be registered in
+   * `pdfMake.fonts`; setting this to false avoids that dependency.
+   *
+   * Default `true`.
+   */
+  textInSvg?: boolean;
 }
 
 /** Trims float noise so coordinates never serialize as `0.30000000000000004`. */
@@ -98,6 +106,7 @@ export function fenToSvg(fen: string, options: BoardSvgOptions = {}): string {
   const orientation = options.orientation === 'black' ? 'black' : 'white';
   const size = options.size ?? 320;
   const coordinates = options.coordinates !== false;
+  const textInSvg = options.textInSvg !== false;
   const palette = options.palette ?? BOARD_SVG_PALETTE;
   const parts: string[] = [];
 
@@ -111,7 +120,7 @@ export function fenToSvg(fen: string, options: BoardSvgOptions = {}): string {
       parts.push(
         `<rect x="${x}" y="${y}" width="1" height="1" fill="${fill}"/>`
       );
-      if (!coordinates) continue;
+      if (!coordinates || !textInSvg) continue;
       // Labels ride the outer edge of the drawn board, so they follow canvas
       // position rather than file/rank and flip with the orientation for free.
       const ink = isLight ? palette.squareDark : palette.squareLight;

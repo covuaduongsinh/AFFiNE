@@ -60,6 +60,7 @@ export const chessGamePdfAdapterMatcher: BlockPdfAdapterMatcher = {
         svg: fenToSvg(toFen(positionAt(game, currentPath)), {
           orientation,
           size: BOARD_SIZE,
+          textInSvg: false,
         }),
         width: BOARD_SIZE,
         height: BOARD_SIZE,
