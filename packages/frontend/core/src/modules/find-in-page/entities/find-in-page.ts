@@ -3,13 +3,14 @@ import { Entity, LiveData } from '@toeverything/infra';
 import {
   debounceTime,
   distinctUntilChanged,
+  from,
   of,
   shareReplay,
   switchMap,
   tap,
 } from 'rxjs';
 
-import type { DesktopApiService } from '../../desktop-api';
+import type { FindInPageBackend } from '../services/find-in-page-backend';
 
 const logger = new DebugLogger('affine:find-in-page');
 
@@ -39,23 +40,20 @@ export class FindInPage extends Entity {
               let findNext = true;
               return this.direction$.pipe(
                 switchMap(direction => {
-                  if (this.electronApi?.handler?.findInPage) {
-                    this.isSearching$.next(true);
-                    const currentId = ++searchId;
-                    return this.electronApi.handler.findInPage
-                      .find(searchText, {
-                        forward: direction === 'forward',
-                        findNext,
-                      })
-                      .finally(() => {
-                        if (currentId === searchId) {
-                          this.isSearching$.next(false);
-                          findNext = false;
-                        }
-                      });
-                  } else {
-                    return of(null);
-                  }
+                  this.isSearching$.next(true);
+                  const currentId = ++searchId;
+                  const promise = Promise.resolve(
+                    this.backend.find(searchText, {
+                      forward: direction === 'forward',
+                      findNext,
+                    })
+                  ).finally(() => {
+                    if (currentId === searchId) {
+                      this.isSearching$.next(false);
+                      findNext = false;
+                    }
+                  });
+                  return from(promise);
                 })
               );
             }
@@ -70,9 +68,8 @@ export class FindInPage extends Entity {
     null
   );
 
-  constructor(private readonly electronApi: DesktopApiService) {
+  constructor(private readonly backend: FindInPageBackend) {
     super();
-    // TODO(@Peng): hide on navigation
   }
 
   findInPage(searchText?: string) {
@@ -115,6 +112,6 @@ export class FindInPage extends Entity {
 
   clear() {
     logger.debug('clear');
-    this.electronApi.handler.findInPage.clear().catch(logger.error);
+    Promise.resolve(this.backend.clear()).catch(logger.error);
   }
 }

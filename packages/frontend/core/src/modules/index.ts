@@ -36,6 +36,7 @@ import { configureEditorSettingModule } from './editor-setting';
 import { configureExplorerIconModule } from './explorer-icon';
 import { configureFavoriteModule } from './favorite';
 import { configureFeatureFlagModule } from './feature-flag';
+import { configureFindInPageModule } from './find-in-page';
 import { configureGlobalContextModule } from './global-context';
 import { configureI18nModule } from './i18n';
 import { configureIconPickerModule } from './icon-picker';
@@ -138,6 +139,7 @@ export function configureCommonModules(framework: Framework) {
   configureMediaModule(framework);
   configureImportClipperModule(framework);
   configureNotificationModule(framework);
+  configureFindInPageModule(framework);
   configureIntegrationModule(framework);
   configureWorkspacePropertyModule(framework);
   configureCollectionRulesModule(framework);

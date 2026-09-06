@@ -92,9 +92,6 @@ export const SplitView = ({
   useDndMonitor<AffineDNDData>(() => {
     return {
       canMonitor(data) {
-        if (!BUILD_CONFIG.isElectron) {
-          return false;
-        }
         // allow dropping doc && tab view to split view panel
         const from = data.source.data.from;
         const entity = data.source.data.entity;

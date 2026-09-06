@@ -1,6 +1,6 @@
 import { cssVar } from '@toeverything/theme';
 import { cssVarV2 } from '@toeverything/theme/v2';
-import { createVar, keyframes, style } from '@vanilla-extract/css';
+import { createVar, globalStyle, keyframes, style } from '@vanilla-extract/css';
 
 export const animationTimeout = createVar();
 
@@ -141,4 +141,14 @@ export const arrowButton = style({
       borderColor: cssVarV2('layer/insideBorder/border'),
     },
   },
+});
+
+globalStyle('::highlight(find-in-page-highlight)', {
+  backgroundColor: 'rgba(255, 215, 0, 0.4)',
+  color: 'inherit',
+});
+
+globalStyle('::highlight(find-in-page-active-highlight)', {
+  backgroundColor: '#ff9632',
+  color: '#000000',
 });

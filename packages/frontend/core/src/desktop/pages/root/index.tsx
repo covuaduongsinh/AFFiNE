@@ -30,7 +30,7 @@ export const RootWrapper = () => {
       <NotificationCenter />
       <Outlet />
       <CustomThemeModifier />
-      {BUILD_CONFIG.isElectron && <FindInPagePopup />}
+      <FindInPagePopup />
     </FrameworkScope>
   );
 };

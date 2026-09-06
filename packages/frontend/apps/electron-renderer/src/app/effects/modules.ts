@@ -17,7 +17,7 @@ import {
   configureSpellCheckSettingModule,
   configureTraySettingModule,
 } from '@affine/core/modules/editor-setting';
-import { configureFindInPageModule } from '@affine/core/modules/find-in-page';
+import { configureDesktopFindInPageModule } from '@affine/core/modules/find-in-page';
 import {
   ClientSchemeProvider,
   PopupWindowProvider,
@@ -43,7 +43,7 @@ export function setupModules() {
   configureBrowserWorkspaceFlavours(framework);
   configureDesktopWorkbenchModule(framework);
   configureAppTabsHeaderModule(framework);
-  configureFindInPageModule(framework);
+  configureDesktopFindInPageModule(framework);
   configureDesktopApiModule(framework);
   configureSpellCheckSettingModule(framework);
   configureTraySettingModule(framework);

@@ -191,7 +191,7 @@ export const MoreMenuContent = (props: DocOperationProps) => {
       <ToggleFavorite {...props} />
       <DocInfo {...props} />
       <NewTab {...props} />
-      {BUILD_CONFIG.isElectron ? <SplitView {...props} /> : null}
+      <SplitView {...props} />
       <Duplicate {...props} />
       <MoveToTrash {...props} />
     </>

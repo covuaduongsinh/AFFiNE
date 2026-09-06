@@ -48,6 +48,17 @@ export const browserAppViewContainer = style({
   position: 'relative',
 });
 
+export const browserAppViewMain = style({
+  display: 'flex',
+  flexFlow: 'column',
+  width: '100%',
+  height: '100%',
+  flex: 1,
+  minWidth: 0,
+  position: 'relative',
+  overflow: 'hidden',
+});
+
 export const desktopAppViewContainer = style({
   display: 'flex',
   flexFlow: 'column',

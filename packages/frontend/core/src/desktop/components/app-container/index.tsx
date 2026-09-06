@@ -8,6 +8,7 @@ import {
 } from '@affine/core/modules/app-sidebar/views';
 import { AppTabsHeader } from '@affine/core/modules/app-tabs-header';
 import { NavigationButtons } from '@affine/core/modules/navigation';
+import { ViewTabs } from '@affine/core/modules/workbench';
 import { WorkspaceService } from '@affine/core/modules/workspace';
 import {
   useLiveData,
@@ -97,7 +98,10 @@ const BrowserLayout = ({
     <div className={styles.browserAppViewContainer}>
       <OpenInAppCard />
       {fallback ? <AppSidebarFallback /> : isInWorkspace && <RootAppSidebar />}
-      <MainContainer>{children}</MainContainer>
+      <div className={styles.browserAppViewMain}>
+        {isInWorkspace && <ViewTabs />}
+        <MainContainer>{children}</MainContainer>
+      </div>
     </div>
   );
 };

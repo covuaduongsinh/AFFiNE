@@ -16,11 +16,11 @@ export {
   DIAGRAM_BOOK_PALETTE,
   fenToSvg,
 } from './board-svg.js';
+export { type ChessTextMatch, detectChessText } from './detect.js';
 export {
   type ChessFontDiagramOptions,
   fenToChessFontText,
 } from './diagram-font.js';
-export { type ChessTextMatch, detectChessText } from './detect.js';
 export {
   deleteFrom,
   playMove,

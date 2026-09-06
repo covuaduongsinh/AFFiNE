@@ -18,9 +18,6 @@ export function useRegisterFindInPageCommands() {
   }, [findInPage]);
 
   useEffect(() => {
-    if (!BUILD_CONFIG.isElectron) {
-      return;
-    }
     const unsubs: Array<() => void> = [];
     unsubs.push(
       registerAffineCommand({
